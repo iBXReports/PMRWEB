@@ -1,0 +1,4159 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Cargo Mobility PMR – Panel Supervisor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Librería para leer Excel (.xlsx / .xls) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --surface-2: #f9fafb;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+
+      --primary: #1e40af;
+      --primary-2: #1e3a8a;
+
+      --warn: #fef9c3;
+      --warn-border: #eab308;
+
+      /* ✅ Vuelos: un poco más notorios (1 tonalidad más oscura) */
+      --emb: #e5e7eb;
+      /* Embarque */
+      --emb-2: #f3f4f6;
+      /* PMR alternancia Embarque */
+      --des: #dbeafe;
+      /* Desembarque */
+      --des-2: #eff6ff;
+      /* PMR alternancia Desembarque */
+
+      --pmr-even: #ffffff;
+      --pmr-odd: #f8fafc;
+
+      --shadow: 0 8px 22px rgba(15, 23, 42, .08);
+      --shadow-soft: 0 4px 12px rgba(15, 23, 42, .06);
+
+      /* ✅ Header */
+      --header-h: 72px;
+
+      /* ✅ Logo ocupa la altura útil del header */
+      --logo-h: calc(var(--header-h) - 18px);
+
+      /* ✅ NUEVO FONDO HEADER (imagen centro) */
+      --header-bg-image: url("https://lh3.googleusercontent.com/d/1hhni3pLOL87OPLHQdxtHq3onZzQfLOgn=w2400");
+      --header-bg-opacity: .38;
+      /* transparencia moderada */
+
+      /* ✅ NUEVO: colores estado agentes */
+      --agent-available: #d9f99d;
+      /* verde lima */
+      --agent-busy: #fef08a;
+      /* amarillento */
+
+      /* ✅ NUEVO: tarjetas disponibilidad por terminal (PMR) */
+      --term-nac-left: #e9d5ff;
+      /* morado pastel */
+      --term-int-left: #e5e7eb;
+      /* gris pastel */
+      --term-right-ok: #bbf7d0;
+      /* verde pastel */
+      --term-right-warn: #fef9c3;
+      /* amarillo pastel */
+      --term-right-bad: #fecaca;
+      /* rojo pastel */
+      --term-right-neutral: #e5e7eb;
+      /* neutral */
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* =========================
+       ✅ HEADER (FONDO IMAGEN + degrade blanco en extremos)
+       ========================= */
+    header {
+      min-height: var(--header-h);
+      color: var(--text);
+      padding: 10px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    /* ✅ Imagen de fondo centrada */
+    header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: var(--header-bg-image);
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: cover;
+      opacity: var(--header-bg-opacity);
+      filter: saturate(1.05) contrast(1.03);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ✅ Degrade blanco a ambos lados */
+    header::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg,
+          rgba(255, 255, 255, 1) 0%,
+          rgba(255, 255, 255, .55) 12%,
+          rgba(255, 255, 255, .18) 30%,
+          rgba(255, 255, 255, .08) 50%,
+          rgba(255, 255, 255, .18) 70%,
+          rgba(255, 255, 255, .55) 88%,
+          rgba(255, 255, 255, 1) 100%);
+      z-index: 1;
+    }
+
+    header>* {
+      position: relative;
+      z-index: 2;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 320px;
+    }
+
+    .logo-box {
+      height: var(--logo-h);
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .app-logo {
+      height: 100%;
+      width: auto;
+      max-width: 240px;
+      display: block;
+      background: transparent;
+      border: none;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(15, 23, 42, .18));
+    }
+
+    header .brand {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header .brand-name {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      color: var(--text);
+    }
+
+    header .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    header .status {
+      font-size: 11px;
+      text-align: right;
+      color: var(--muted);
+    }
+
+    header .status #api-status {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .app {
+      display: flex;
+      height: calc(100vh - var(--header-h));
+    }
+
+    .sidebar {
+      width: 340px;
+      background: var(--surface);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .sidebar-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+
+    .nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      border: none;
+      border-radius: 14px;
+      color: #fff;
+      padding: 14px 10px;
+      font-size: 11px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform .1s, box-shadow .2s, filter .15s;
+      font-weight: 800;
+      box-shadow: 0 4px 12px rgba(0,0,0,.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      line-height: 1.2;
+      letter-spacing: .02em;
+    }
+
+    .nav-btn .nav-icon {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .nav-btn:hover {
+      filter: brightness(1.1) saturate(1.1);
+      box-shadow: 0 8px 22px rgba(0,0,0,.18);
+      transform: translateY(-2px) scale(1.03);
+    }
+
+    .nav-btn.active {
+      outline: 3px solid rgba(255,255,255,.6);
+      outline-offset: -3px;
+      filter: brightness(1.05);
+      box-shadow: 0 6px 20px rgba(0,0,0,.22);
+      transform: scale(1.02);
+    }
+
+    .nav-btn:focus {
+      outline: 3px solid rgba(255,255,255,.6);
+      outline-offset: -3px;
+    }
+
+    .nav-btn[data-color="indigo"]  { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+    .nav-btn[data-color="blue"]    { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .nav-btn[data-color="sky"]     { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+    .nav-btn[data-color="teal"]    { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+    .nav-btn[data-color="emerald"] { background: linear-gradient(135deg, #10b981, #059669); }
+    .nav-btn[data-color="amber"]   { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .nav-btn[data-color="rose"]    { background: linear-gradient(135deg, #f43f5e, #e11d48); }
+
+
+    .actions-box {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 10px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .action-tabs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .action-tab-btn {
+      border: 1px solid rgba(29, 78, 216, .35);
+      border-radius: 12px;
+      background: linear-gradient(180deg, var(--primary), var(--primary-2));
+      color: #fff;
+      padding: 8px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      text-align: center;
+      transition: transform .05s, box-shadow .15s, filter .15s, color .15s;
+      font-weight: 900;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, .18);
+    }
+
+    .action-tab-btn:hover {
+      color: #ef4444;
+      filter: brightness(1.03);
+      box-shadow: 0 8px 18px rgba(37, 99, 235, .22);
+      transform: translateY(-1px);
+    }
+
+    .action-tab-btn.active {
+      color: #ef4444;
+      filter: brightness(1.00);
+      border-color: rgba(29, 78, 216, .55);
+      box-shadow: 0 10px 20px rgba(37, 99, 235, .24);
+    }
+
+    .action-tab-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .18), 0 10px 20px rgba(37, 99, 235, .20);
+    }
+
+    .action-form {
+      margin-top: 6px;
+      border-radius: 12px;
+      background: var(--surface-2);
+      padding: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .action-form.hidden {
+      display: none;
+    }
+
+    label {
+      display: block;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+      transition: border .12s, box-shadow .12s, background .12s;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    input[type="time"]:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #c7d2fe;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, .18);
+      background: var(--surface);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 56px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .btn-submit {
+      margin-top: 10px;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--primary-2));
+      color: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: var(--shadow-soft);
+      transition: transform .05s, box-shadow .15s, filter .15s;
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 900;
+    }
+
+    .btn-submit:hover {
+      filter: brightness(1.05);
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+
+    .btn-submit:disabled {
+      opacity: .6;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn-assign {
+      border: 1px solid #f59e0b;
+      background: #fde68a;
+      /* ✅ amarillo pastel */
+      color: #111827;
+      font-weight: 900;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: transform .05s, box-shadow .15s, filter .15s;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 18);
+      white-space: nowrap;
+    }
+
+    .btn-assign--pending {
+      border-color: #fb923c;
+      background: #fed7aa;
+      /* ✅ naranjo pastel */
+      box-shadow: 0 4px 12px rgba(251, 146, 60, 16);
+      color: #7c2d12;
+    }
+
+    .btn-assign--assigned {
+      border-color: #22c55e;
+      background: #bbf7d0;
+      /* ✅ verde pastel */
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 14);
+      color: #064e3b;
+    }
+
+    .btn-assign:not(:disabled):hover {
+      filter: brightness(1.03);
+      transform: translateY(-1px);
+    }
+
+    .btn-assign:not(:disabled):active {
+      transform: translateY(0);
+    }
+
+    .btn-assign:disabled {
+      opacity: .85;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+      filter: saturate(.95);
+    }
+
+    .helper-text {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+
+    .msg {
+      font-size: 11px;
+      margin-top: 6px;
+      color: var(--muted);
+    }
+
+    .msg.ok {
+      color: #16a34a;
+      font-weight: 800;
+    }
+
+    .msg.err {
+      color: #b45309;
+      font-weight: 800;
+    }
+
+    .main {
+      flex: 1;
+      padding: 12px 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .view-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .view-title {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .view-filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 11px;
+      align-items: center;
+    }
+
+    .chip {
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      padding: 6px 10px;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .chip-label {
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .view-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .empty-state {
+      padding: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      border-radius: 12px;
+      border: 1px dashed #d1d5db;
+      background: var(--surface-2);
+      margin-top: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 11px;
+      margin-top: 8px;
+      color: var(--text);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 7px 8px;
+      text-align: left;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    th {
+      background: var(--surface-2);
+      color: var(--muted);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td+td,
+    th+th {
+      border-left: 1px solid var(--border);
+    }
+
+    tr:hover {
+      filter: brightness(0.985);
+    }
+
+    /* =========================
+       ✅ Vuelos: diferenciación más notoria
+       ========================= */
+    .row-embarque td {
+      background: var(--emb);
+    }
+
+    .row-desembarque td {
+      background: var(--des);
+    }
+
+    .row-embarque td:first-child {
+      box-shadow: inset 4px 0 0 0 rgba(107, 114, 128, .70);
+    }
+
+    .row-desembarque td:first-child {
+      box-shadow: inset 4px 0 0 0 rgba(37, 99, 235, .65);
+    }
+
+    .row-warning td {
+      background: var(--warn) !important;
+    }
+
+    .row-warning td:first-child {
+      box-shadow: inset 4px 0 0 0 var(--warn-border);
+    }
+
+    .row-overdue td {
+      background: #fee2e2 !important;
+      /* Rojo pastel */
+      color: #991b1b !important;
+      /* Rojo oscuro */
+    }
+
+    .row-overdue td:first-child {
+      box-shadow: inset 4px 0 0 0 #ef4444;
+    }
+
+    /* =========================
+       ✅ Agentes: colores por estado servicio
+       ========================= */
+    .row-agent-available td {
+      background: var(--agent-available) !important;
+    }
+
+    .row-agent-available td:first-child {
+      box-shadow: inset 4px 0 0 0 rgba(34, 197, 94, .70);
+    }
+
+    .row-agent-busy td {
+      background: var(--agent-busy) !important;
+    }
+
+    .row-agent-busy td:first-child {
+      box-shadow: inset 4px 0 0 0 rgba(234, 179, 8, .70);
+    }
+
+    /* =========================
+       ✅ PMR: tarjetas disponibilidad por terminal
+       ========================= */
+    .pmr-terminal-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 6px 0 10px;
+    }
+
+    .term-card {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-soft);
+      padding: 12px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 58px;
+      background:
+        linear-gradient(90deg, var(--left-color) 0%, rgba(255, 255, 255, .55) 34%, rgba(255, 255, 255, 0) 54%),
+        linear-gradient(90deg, rgba(255, 255, 255, 0) 46%, rgba(255, 255, 255, .55) 66%, var(--right-color) 100%);
+    }
+
+    .term-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .term-title {
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .term-sub {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .term-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 2px;
+    }
+
+    .term-count {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .term-meta {
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+
+    .badge-emb {
+      background: #d1d5db;
+      border-color: #cbd5e1;
+    }
+
+    .badge-des {
+      background: #bfdbfe;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
+
+    .badge-warn {
+      background: #fde68a;
+      border-color: #f59e0b;
+      color: #7c2d12;
+    }
+
+    .pmr-group-even td {
+      background: var(--pmr-even);
+    }
+
+    .pmr-group-odd td {
+      background: var(--pmr-odd);
+    }
+
+    .pmr-group-even.row-embarque td {
+      background: var(--emb);
+    }
+
+    .pmr-group-odd.row-embarque td {
+      background: var(--emb-2);
+    }
+
+    .pmr-group-even.row-desembarque td {
+      background: var(--des);
+    }
+
+    .pmr-group-odd.row-desembarque td {
+      background: var(--des-2);
+    }
+
+    .pmr-group-even:hover td,
+    .pmr-group-odd:hover td {
+      filter: brightness(0.985);
+    }
+
+    .view-section {
+      display: none;
+    }
+
+    .view-section.active {
+      display: block;
+    }
+
+    .btn-mini {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: var(--shadow-soft);
+      transition: transform .05s, box-shadow .15s, background .15s;
+      white-space: nowrap;
+    }
+
+    .btn-mini:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+
+    @media(max-width:900px) {
+      .app {
+        flex-direction: column;
+        height: auto;
+      }
+
+      .sidebar {
+        width: 100%;
+      }
+
+      header {
+        padding: 10px 12px;
+      }
+
+      .header-left {
+        min-width: unset;
+      }
+
+      :root {
+        --logo-h: 42px;
+      }
+
+      .app-logo {
+        max-width: 200px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="header-left">
+      <div class="logo-box">
+        <img class="app-logo" src="https://lh3.googleusercontent.com/d/1V27XPdnwUnXj3fVWuKyiUORcu09-CVXP=w800"
+          alt="Logo" decoding="async" loading="eager" referrerpolicy="no-referrer" />
+      </div>
+
+      <div class="brand">
+        <span class="brand-name">Cargo Mobility – PMR</span>
+        <span class="brand-sub">Panel Supervisor / CDO</span>
+      </div>
+    </div>
+
+    <div class="status">
+      <div id="api-status">Conectando con API...</div>
+      <div id="last-update">Última actualización: --</div>
+    </div>
+  </header>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div>
+        <div class="sidebar-section-title">Vistas</div>
+        <div class="nav">
+          <button class="nav-btn" data-view="dashboard" data-color="indigo"><span class="nav-icon">📊</span>Dashboard</button>
+          <button class="nav-btn active" data-view="vuelos" data-color="blue"><span class="nav-icon">✈️</span>Vuelos</button>
+          <button class="nav-btn" data-view="pmr" data-color="sky"><span class="nav-icon">♿</span>Pasajeros PMR</button>
+          <button class="nav-btn" data-view="asignaciones" data-color="teal"><span class="nav-icon">📋</span>Asignaciones</button>
+          <button class="nav-btn" data-view="agentes" data-color="emerald"><span class="nav-icon">🧑‍✈️</span>Agentes</button>
+          <button class="nav-btn" data-view="timeline" data-color="amber"><span class="nav-icon">⏰</span>Timeline</button>
+          <button class="nav-btn" data-view="como" data-color="rose" style="grid-column: span 2;"><span class="nav-icon">❓</span>¿Cómo se usa?</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="sidebar-section-title">Acciones</div>
+        <div class="actions-box">
+          <div class="action-tabs">
+            <button class="action-tab-btn active" data-target="form-modificar-vuelo">Modificar vuelo</button>
+
+            <!-- ✅ CAMBIO: Carga masiva ahora abre ClientePMR en NUEVA PESTAÑA -->
+            <button class="action-tab-btn" data-target="form-carga-masiva">Carga masiva</button>
+
+            <button class="action-tab-btn" data-target="form-itinerario-latam">Itinerario LATAM</button>
+            <button class="action-tab-btn" data-target="form-asignar-pmr">Asignar PMR</button>
+          </div>
+
+          <div id="form-modificar-vuelo" class="action-form">
+            <label>Seleccionar vuelo (sólo hoy)
+              <select id="modificar-id-vuelo">
+                <option value="">— Seleccionar —</option>
+              </select>
+            </label>
+            <label>Nueva fecha <input type="date" id="modificar-fecha" /></label>
+            <label>Nueva hora <input type="time" id="modificar-hora" /></label>
+            <label>Nueva puerta <input type="text" id="modificar-puerta" /></label>
+            <label>Nuevo espigón <input type="text" id="modificar-espigon" /></label>
+            <button class="btn-submit" id="btn-modificar-vuelo">Modificar vuelo</button>
+            <div class="helper-text">Sólo se permiten modificaciones en vuelos del día actual.</div>
+            <div class="msg" id="msg-modificar-vuelo"></div>
+          </div>
+
+          <!-- ✅ CARGA MASIVA (DESHABILITADA) -> ahora sólo abre ClientePMR -->
+          <div id="form-carga-masiva" class="action-form hidden">
+            <div class="helper-text">
+              La carga masiva por archivo (Excel/CSV) fue deshabilitada en este panel.<br>
+              Para continuar, abre el portal <b>Cliente PMR</b> (se abrirá en una nueva pestaña).
+            </div>
+            <button class="btn-submit" id="btn-carga-masiva" type="button">Abrir Cliente PMR</button>
+            <div class="msg" id="msg-carga-masiva"></div>
+          </div>
+
+          <!-- ✅ ITINERARIO LATAM (reemplaza Carga Ostrum) -->
+          <div id="form-itinerario-latam" class="action-form hidden">
+            <label>Archivo Itinerario LATAM (Excel o CSV)
+              <input type="file" id="input-itinerario-latam" accept=".xlsx,.xls,.csv" />
+            </label>
+            <div class="helper-text">
+              Formato mínimo (columnas A–D):<br>
+              A Código Aerolínea · B Número Vuelo · C Origen-Destino · D Fecha Hora<br>
+              Nota: si tu archivo trae más columnas, este panel intentará detectar Tipo Avión y Observaciones por
+              encabezado.
+              Puerta/Espigón quedan para carga manual y no se sobreescriben.
+            </div>
+            <button class="btn-submit" id="btn-itinerario-latam">Procesar itinerario</button>
+            <div class="msg" id="msg-itinerario-latam"></div>
+          </div>
+
+          <div id="form-asignar-pmr" class="action-form hidden">
+            <label>Pasajero PMR (En espera)
+              <select id="asig-select-pmr">
+                <option value="">— Seleccionar PMR —</option>
+              </select>
+            </label>
+
+            <label>Agente disponible (misma terminal)
+              <select id="asig-select-agente">
+                <option value="">— Selecciona primero un PMR —</option>
+              </select>
+            </label>
+
+            <label>Tipo de traslado
+              <select id="asig-tipo-traslado">
+                <option value="">— Seleccionar —</option>
+                <option value="Ultima Milla">Última Milla</option>
+                <option value="Tramo Completo">Tramo Completo</option>
+              </select>
+            </label>
+
+            <label>Origen (auto) <input type="text" id="asig-origen" readonly /></label>
+            <label>Destino (auto) <input type="text" id="asig-destino" readonly /></label>
+            <div class="helper-text">
+              Origen/destino se calculan automáticamente según tipo de servicio del vuelo, tipo de asistencia y tipo de
+              traslado.
+            </div>
+
+            <label>Observaciones <textarea id="asig-obs"></textarea></label>
+            <button class="btn-submit" id="btn-asignar-pmr">Asignar</button>
+            <div class="helper-text">Se filtrarán agentes "Disponibles" en la misma terminal del vuelo del PMR.</div>
+            <div class="msg" id="msg-asignar-pmr"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="view-header">
+        <div class="view-title" id="view-title">Vuelos</div>
+        <div class="view-filters">
+          <button class="btn-mini" id="btn-actualizar">Actualizar datos</button>
+          <div class="chip" id="auto-refresh-box" style="display:none;">
+            <span class="chip-label">Auto-refresco</span>
+            <span>en <span id="auto-refresh-label">45</span> s</span>
+          </div>
+          <div class="chip" id="chip-info-vista">
+            <span class="chip-label">Vuelos:</span>
+            <span>Mostrando hoy y mañana</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-container">
+        <section id="view-dashboard" class="view-section">
+          <div id="dashboard-kpis" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:20px;"></div>
+          <div style="font-weight:900; font-size:15px; color:#1e40af; margin-bottom:10px;">Próximos 10 vuelos</div>
+          <div id="dashboard-vuelos" style="display:flex; gap:12px; overflow-x:auto; padding-bottom:10px;"></div>
+          <div style="font-weight:900; font-size:15px; color:#16a34a; margin:20px 0 10px 0;">Agentes Disponibles</div>
+          <div id="dashboard-agentes-disponibles" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+        </section>
+
+        <section id="view-vuelos" class="view-section active">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-bottom:6px;">
+            <div style="min-width:160px;">
+              <label>Filtro N° vuelo <input type="text" id="filtro-vuelo-num" placeholder="Ej: LA345" /></label>
+            </div>
+            <div style="min-width:180px;">
+              <label>Aerolínea (autocompletar)
+                <input type="text" id="filtro-aerolinea" list="lista-aerolineas" placeholder="Todas" />
+                <datalist id="lista-aerolineas"></datalist>
+              </label>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:50px;text-align:center;" title="Asignar Maestro y Apoyos">✈️</th>
+                <th>ID Vuelo</th>
+                <th>Fecha</th>
+                <th>Hora</th>
+                <th>Hora ideal</th>
+                <th>Aerolínea</th>
+                <th>N° Vuelo</th>
+                <th>Terminal</th>
+                <th>Puerta</th>
+                <th>Espigón</th>
+                <th>Cant PMR</th>
+                <th>Tipo servicio</th>
+                <th>Estado</th>
+                <th>Tipo</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Obs</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-vuelos"></tbody>
+          </table>
+          <div class="empty-state" id="empty-vuelos" style="display:none;">No hay vuelos para hoy o mañana (solo
+            próximas horas, con PMR en espera).</div>
+        </section>
+
+        <section id="view-pmr" class="view-section">
+          <div class="pmr-terminal-cards" id="pmr-terminal-cards">
+            <div class="term-card" id="term-card-nacional"
+              style="--left-color: var(--term-nac-left); --right-color: var(--term-right-neutral);">
+              <div class="term-left">
+                <div class="term-title">Nacional</div>
+                <div class="term-sub">Agentes disponibles</div>
+              </div>
+              <div class="term-right">
+                <div class="term-count" id="term-nac-count">0</div>
+                <div class="term-meta" id="term-nac-meta">0 / 0 (0%)</div>
+              </div>
+            </div>
+
+            <div class="term-card" id="term-card-internacional"
+              style="--left-color: var(--term-int-left); --right-color: var(--term-right-neutral);">
+              <div class="term-left">
+                <div class="term-title">Internacional</div>
+                <div class="term-sub">Agentes disponibles</div>
+              </div>
+              <div class="term-right">
+                <div class="term-count" id="term-int-count">0</div>
+                <div class="term-meta" id="term-int-meta">0 / 0 (0%)</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-bottom:6px;">
+            <div style="min-width:260px;">
+              <label>Filtrar por Vuelo (N° + fecha)
+                <select id="filtro-pmr-vuelo">
+                  <option value="">Todos</option>
+                </select>
+              </label>
+            </div>
+            <div style="min-width:180px;">
+              <label>Filtrar por Estado
+                <select id="filtro-pmr-estado">
+                  <option value="">Todos</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <!-- Bulk selection controls - INSERT THIS AFTER LINE 1050 (after </div>) and BEFORE <table> -->
+
+          <!-- Bulk selection controls -->
+          <div id="bulk-selection-controls" style="display:none;margin-bottom:8px;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span id="selection-count-badge"
+                style="background:#1e40af;color:#fff;padding:6px 12px;border-radius:999px;font-weight:900;font-size:11px;">0
+                seleccionados</span>
+              <button id="btn-asignar-masivo" class="btn-mini"
+                style="background:linear-gradient(90deg, #1e40af, #1e3a8a);color:#fff;border:none;font-weight:900;">Asignar
+                Masivo</button>
+              <button id="btn-deseleccionar-todo" class="btn-mini">Deseleccionar Todo</button>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px;"><input type="checkbox" id="checkbox-select-all-pmr"
+                    title="Seleccionar todos (página actual)" /></th>
+                <th>ID PMR</th>
+                <th>Vuelo</th>
+                <th>Fecha</th>
+                <th>Hora vuelo</th>
+                <th>Hora ideal</th>
+                <th>Nombre</th>
+                <th>Tipo asistencia</th>
+                <th>Edad</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Estado</th>
+                <th>Asignar</th>
+                <th>Hora inicio</th>
+                <th>Hora fin</th>
+                <th>Obs</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-pmr"></tbody>
+          </table>
+          <div class="empty-state" id="empty-pmr" style="display:none;">No hay pasajeros PMR para los filtros
+            seleccionados.</div>
+        </section>
+
+        <section id="view-asignaciones" class="view-section">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-bottom:6px;">
+            <div style="min-width:160px;"><label>Filtro N° vuelo <input type="text" id="filtro-asig-vuelo-num"
+                  placeholder="Ej: LA345" /></label></div>
+            <div style="min-width:160px;"><label>Fecha asignación <input type="date" id="filtro-asig-fecha" /></label>
+            </div>
+            <div style="min-width:160px;"><label>Tipo traslado <select id="filtro-asig-tipo">
+                  <option value="">Todos</option>
+                </select></label></div>
+            <div style="min-width:160px;"><label>Estado <select id="filtro-asig-estado">
+                  <option value="">Todos</option>
+                </select></label></div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>ID Asignación</th>
+                <th>ID Vuelo</th>
+                <th>ID PMR</th>
+                <th>ID Agente</th>
+                <th>Fecha</th>
+                <th>Hora Asig.</th>
+                <th>Hora inicio</th>
+                <th>Hora fin</th>
+                <th>Estado</th>
+                <th>Tipo traslado</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Justificación cancelación</th>
+                <th>Hora límite</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-asignaciones"></tbody>
+          </table>
+          <div class="empty-state" id="empty-asignaciones" style="display:none;">No hay asignaciones registradas para
+            los filtros seleccionados.</div>
+        </section>
+
+        <section id="view-agentes" class="view-section">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-bottom:6px;align-items:flex-end;">
+            <div style="min-width:200px;">
+              <label>Filtrar por nombre <input type="text" id="filtro-agente-nombre"
+                  placeholder="Ej: Juan Pérez" /></label>
+            </div>
+            <div style="display:flex;gap:8px;margin-left:auto;">
+              <button class="btn-mini" id="btn-exportar-agentes-xls" style="background:#107c41;color:#fff;border:none;">Descargar XLS</button>
+              <button class="btn-mini" id="btn-exportar-agentes-xlsx" style="background:#185c37;color:#fff;border:none;">Descargar XLSX</button>
+              <button class="btn-mini" id="btn-editar-agentes" style="background:#2563eb;color:#fff;border:none;">Editar Agentes</button>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>ID Agente</th>
+                <th>Nombre</th>
+                <th>RUT</th>
+                <th>Teléfono</th>
+                <th>Estado</th>
+                <th>Estado Servicio</th>
+                <th>Último Servicio</th>
+                <th>Observaciones</th>
+                <th>Ubicación</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-agentes"></tbody>
+          </table>
+          <div class="empty-state" id="empty-agentes" style="display:none;">No hay agentes configurados.</div>
+        </section>
+
+        <section id="view-timeline" class="view-section">
+          <div id="timeline-container" style="display:flex; flex-direction:column; gap:20px; padding:10px 0;"></div>
+          <div class="empty-state" id="empty-timeline" style="display:none;">No hay vuelos para el Timeline.</div>
+        </section>
+
+        <section id="view-como" class="view-section">
+          <div style="padding:10px 8px; font-size:12px; line-height:1.45; color:var(--text);">
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <div
+                style="border:1px solid var(--border); background:var(--surface-2); border-radius:14px; padding:12px; box-shadow:var(--shadow-soft);">
+                <div style="font-weight:900; letter-spacing:.04em; text-transform:uppercase; margin-bottom:6px;">Manual
+                  rápido — Panel Supervisor PMR</div>
+                <div style="color:var(--muted); font-size:11px;">
+                  Esta vista explica cómo operar el sistema, qué significa cada pantalla y el flujo recomendado para
+                  planificar y ejecutar servicios PMR.
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px;">
+                <div
+                  style="border:1px solid var(--border); border-radius:14px; padding:12px; background:var(--surface); box-shadow:var(--shadow-soft);">
+                  <div style="font-weight:900; margin-bottom:6px;">1) Menú de Vistas</div>
+                  <ul style="margin-left:16px; display:flex; flex-direction:column; gap:6px;">
+                    <li><b>Vuelos</b>: muestra vuelos de <b>hoy y mañana</b> que aún están por ejecutarse y que tienen
+                      PMR <b>En espera</b>. Incluye <b>Hora ideal</b> (badge) para priorizar.</li>
+                    <li><b>Pasajeros PMR</b>: lista PMR operativos (En espera / En asignación / Asignado) para hoy y
+                      mañana. Incluye filtro por vuelo y por estado.</li>
+                    <li><b>Asignaciones</b>: auditoría operacional. Permite filtrar por vuelo, fecha, tipo de traslado y
+                      estado. Útil para seguimiento y trazabilidad.</li>
+                    <li><b>Agentes</b>: estado actual de dotación (disponible / en asignación / en servicio) y ubicación
+                      (Nacional/Internacional).</li>
+                    <li><b>¿Cómo se usa?</b>: este manual.</li>
+                  </ul>
+                </div>
+
+                <div
+                  style="border:1px solid var(--border); border-radius:14px; padding:12px; background:var(--surface); box-shadow:var(--shadow-soft);">
+                  <div style="font-weight:900; margin-bottom:6px;">2) Menú de Acciones</div>
+                  <ul style="margin-left:16px; display:flex; flex-direction:column; gap:6px;">
+                    <li><b>Modificar vuelo</b>: ajusta fecha/hora/puerta/espigón en vuelos del día. Úsalo ante cambios
+                      operacionales.</li>
+                    <li><b>Carga masiva</b>: abre el portal <b>Cliente PMR</b> en una nueva pestaña para cargar
+                      información en forma acelerada (vuelos + PMR).</li>
+                    <li><b>Itinerario LATAM</b>: carga archivo (Excel/CSV) para poblar/actualizar vuelos LATAM de manera
+                      rápida.</li>
+                    <li><b>Asignar PMR</b>: crea asignaciones de agentes a PMR. Este panel permite planificar con
+                      anticipación.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div
+                style="border:1px solid var(--border); border-radius:14px; padding:12px; background:var(--surface); box-shadow:var(--shadow-soft);">
+                <div style="font-weight:900; margin-bottom:8px;">3) Flujo recomendado (paso a paso)</div>
+                <ol style="margin-left:18px; display:flex; flex-direction:column; gap:6px;">
+                  <li><b>Cargar información</b>:
+                    <ul style="margin-left:16px; margin-top:4px;">
+                      <li>Si tienes planilla: usa <b>Itinerario LATAM</b> o <b>Carga masiva</b> (Cliente PMR).</li>
+                      <li>Valida en <b>Vuelos</b> que el vuelo esté correcto (fecha/hora/terminal/estado).</li>
+                    </ul>
+                  </li>
+                  <li><b>Revisar demanda</b>:
+                    <ul style="margin-left:16px; margin-top:4px;">
+                      <li>En <b>Pasajeros PMR</b>, filtra por vuelo para ver PMR pendientes.</li>
+                      <li>Prioriza por <b>Hora ideal</b> (badge) y por tipo de servicio (Embarque/Desembarque).</li>
+                    </ul>
+                  </li>
+                  <li><b>Asignar</b>:
+                    <ul style="margin-left:16px; margin-top:4px;">
+                      <li>En <b>Asignar PMR</b>, selecciona el PMR “En espera”.</li>
+                      <li>Selecciona un agente por terminal. El sistema permite asignar agentes aunque estén <i>en
+                          asignación</i> o <i>en servicio</i>, siempre que su <b>carga activa</b> sea menor a <b>5</b>.
+                      </li>
+                      <li>Define <b>Tipo de traslado</b>. Origen/Destino se autocalculan.</li>
+                      <li>Presiona <b>Asignar</b>. Se generará una asignación y se notificará por correo (1 correo por
+                        asignación).</li>
+                    </ul>
+                  </li>
+                  <li><b>Seguimiento</b>:
+                    <ul style="margin-left:16px; margin-top:4px;">
+                      <li>Monitorea en <b>Asignaciones</b> el estado y la hora límite de aceptación.</li>
+                      <li>Usa <b>Agentes</b> para controlar disponibilidad por terminal.</li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+
+              <div
+                style="border:1px solid var(--border); border-radius:14px; padding:12px; background:var(--surface); box-shadow:var(--shadow-soft);">
+                <div style="font-weight:900; margin-bottom:8px;">4) Interpretación de datos (tips)</div>
+                <ul style="margin-left:16px; display:flex; flex-direction:column; gap:6px;">
+                  <li><b>Hora ideal</b>: referencia operativa para priorización (Embarque suele ser más anticipado que
+                    Desembarque).</li>
+                  <li><b>Colores</b>: vuelos y badges resaltan proximidad a la hora ideal; agentes “Disponibles” se
+                    destacan con color distinto.</li>
+                  <li><b>Terminal</b>: las asignaciones se filtran por terminal para evitar cruces
+                    (Nacional/Internacional).</li>
+                  <li><b>Carga máxima por agente</b>: un agente puede acumular hasta <b>5</b> asignaciones activas
+                    (pendientes/aceptadas/en curso). Al llegar al límite, deja de aparecer como opción para nuevas
+                    asignaciones.</li>
+                </ul>
+                <div style="margin-top:8px; font-size:11px; color:var(--muted);">
+                  Nota técnica: para que el “reinicio” del contador de 5 minutos aplique completamente, la API (Code.gs)
+                  debe recalcular <i>horaLimite</i> por cada nueva asignación del agente.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwFBHpIx-gQrVAvj5Vv-I-l1X3NR9MYbyTV9CtxgKCw7oPeuxIE5qrYx3eZdDoIroTE/exec";
+    const CLIENTE_PMR_URL = "https://vargasmobility.github.io/SISTEMA-PMR-WEB/ClientePMR.html";
+    const maxRetries = 3;          // cantidad de reintentos por chunk (1 = sin reintentos)
+    const retryBaseDelayMs = 800;  // backoff base en ms
+
+    let cacheVuelos = [];
+    let cachePasajeros = [];
+    let cacheAsignaciones = [];
+    let cacheAgentes = [];
+
+    // ✅ Bulk selection state
+    let selectedPmrIds = new Set();
+
+    let autoRefreshInterval = null;
+    let autoRefreshSeconds = 180;
+
+    // ============== SELECCIÓN MASIVA (HELPERS) ==============
+
+    function updateSelectionUI() {
+      const count = selectedPmrIds.size;
+      const controls = document.getElementById('bulk-selection-controls');
+      const badge = document.getElementById('selection-count-badge');
+
+      if (controls) controls.style.display = count > 0 ? 'block' : 'none';
+      if (badge) badge.textContent = `${count} seleccionado${count !== 1 ? 's' : ''}`;
+    }
+
+    function togglePmrSelection(idPmr, checked) {
+      const id = String(idPmr);
+      if (checked) selectedPmrIds.add(id);
+      else selectedPmrIds.delete(id);
+      updateSelectionUI();
+    }
+
+    function selectAllPmrs(checked) {
+      const checkboxes = document.querySelectorAll('.pmr-checkbox');
+      checkboxes.forEach(cb => {
+        cb.checked = checked;
+        const id = String(cb.getAttribute('data-idpmr'));
+        if (checked) selectedPmrIds.add(id);
+        else selectedPmrIds.delete(id);
+      });
+      updateSelectionUI();
+    }
+
+    function deselectAll() {
+      selectedPmrIds.clear();
+      const checkboxAll = document.getElementById('checkbox-select-all-pmr');
+      if (checkboxAll) checkboxAll.checked = false;
+      document.querySelectorAll('.pmr-checkbox').forEach(cb => cb.checked = false);
+      updateSelectionUI();
+    }
+
+    // ============== ASIGNACIÓN MASIVA (WORKFLOW) ==============
+
+    async function abrirAsignacionMasiva() {
+      if (selectedPmrIds.size === 0) {
+        alert('Selecciona al menos un PMR para asignar.');
+        return;
+      }
+
+      const selectedPmrs = Array.from(selectedPmrIds).map(id =>
+        cachePasajeros.find(p => String(p.idPmr) === String(id))
+      ).filter(Boolean);
+
+      if (selectedPmrs.length === 0) {
+        alert('No se encontraron los PMRs seleccionados.');
+        return;
+      }
+
+      // Determine terminal común (opcional para filtro)
+      const terminals = new Set(selectedPmrs.map(p => {
+        const v = getVueloDePmr(p);
+        return v ? normalizarTerminalGeneral(v.terminal) : '';
+      }).filter(Boolean));
+
+      const terminalComun = terminals.size === 1 ? Array.from(terminals)[0] : '';
+
+      // Crear modal dinámicamente
+      const modal = document.createElement('div');
+      modal.id = 'modal-asignacion-masiva';
+      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:15px;';
+
+      const content = document.createElement('div');
+      content.style.cssText = 'background:#fff;border-radius:20px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-family:inherit;';
+
+      let pmrsListHtml = '';
+      selectedPmrs.forEach(p => {
+        const v = getVueloDePmr(p);
+        pmrsListHtml += `<li style="padding:4px 0;font-size:12px;border-bottom:1px solid #f3f4f6;">
+          <span style="font-weight:900;color:#1e40af;">${p.idPmr}</span> - ${p.nombre || 'Sin nombre'} 
+          <span style="color:#6b7280;font-size:11px;">(Vuelo ${p.vuelo || ''} · ${v?.terminal || 'Sin terminal'})</span>
+        </li>`;
+      });
+
+      content.innerHTML = `
+        <h2 style="margin:0 0 16px 0;color:#1e40af;font-size:18px;">Asignar ${selectedPmrs.length} PMRs</h2>
+        <div style="margin-bottom:16px;background:#f8fafc;padding:12px;border-radius:12px;">
+          <ul style="margin:0;list-style:none;padding:0;max-height:120px;overflow:auto;">${pmrsListHtml}</ul>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Agente disponible ${terminalComun ? `en ${terminalComun}` : ''}</label>
+          <select id="modal-agente-masivo" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;"></select>
+          <div id="modal-agente-capacidad" style="margin-top:6px;font-size:11px;min-height:16px;"></div>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Tipo de Traslado</label>
+          <select id="modal-tipo-traslado-masivo" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;">
+            <option value="">— Seleccionar —</option>
+            <option value="Ultima Milla">Última Milla</option>
+            <option value="Tramo Completo">Tramo Completo</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Observaciones generales (opcional)</label>
+          <textarea id="modal-obs-masivo" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;min-height:60px;font-size:13px;resize:vertical;"></textarea>
+        </div>
+        
+        <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;">
+          <button id="modal-btn-cancelar" style="padding:10px 20px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-weight:700;font-size:13px;">Cancelar</button>
+          <button id="modal-btn-asignar" style="padding:10px 24px;border-radius:999px;border:none;background:linear-gradient(90deg, #1e40af, #1e3a8a);color:#fff;cursor:pointer;font-weight:900;font-size:13px;">Confirmar Asignación</button>
+        </div>
+        <div id="modal-msg" style="margin-top:14px;font-size:12px;text-align:center;"></div>
+      `;
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      // ✅ Autodefinir tipo de traslado sugerido (según primer PMR de la lista)
+      const firstPmr = selectedPmrs[0];
+      const vFirst = getVueloDePmr(firstPmr);
+      const aeroSugerida = vFirst ? vFirst.aerolinea : "";
+      const trasladoSugerido = getTipoTrasladoSugerido(aeroSugerida);
+      const selTrasladoMasivo = document.getElementById('modal-tipo-traslado-masivo');
+      if (selTrasladoMasivo) {
+        selTrasladoMasivo.value = trasladoSugerido;
+      }
+
+      // Llenar agentes con capacidad
+      const selAgente = document.getElementById('modal-agente-masivo');
+      const agentesDisp = agentesAsignablesEnTerminal(terminalComun);
+
+      selAgente.innerHTML = '<option value="">— Seleccionar Agente —</option>';
+      agentesDisp.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.idAgente;
+        opt.textContent = `${a.nombre} (${a.idAgente}) · ${a._carga} activos`;
+        opt.setAttribute('data-carga', a._carga);
+        selAgente.appendChild(opt);
+      });
+
+      // Validación dinámica de capacidad
+      selAgente.addEventListener('change', () => {
+        const divCap = document.getElementById('modal-agente-capacidad');
+        if (!divCap) return;
+
+        const opt = selAgente.selectedOptions[0];
+        if (!opt || !opt.value) {
+          divCap.textContent = '';
+          return;
+        }
+
+        const carga = parseInt(opt.getAttribute('data-carga') || '0', 10);
+        const MAX = 7;
+        const disponible = MAX - carga;
+        const seleccionados = selectedPmrIds.size;
+
+        if (false) { // Deshabilitado validacion visual
+          divCap.innerHTML = `<span style="color:#dc2626;font-weight:900;">⚠ El agente solo tiene ${disponible} cupos libres (intentas asignar ${seleccionados})</span>`;
+          document.getElementById('modal-btn-asignar').disabled = true;
+          document.getElementById('modal-btn-asignar').style.opacity = '0.5';
+        } else {
+          divCap.innerHTML = `<span style="color:#16a34a;font-weight:700;">✓ Asignación permitida (sin límite)</span>`;
+          document.getElementById('modal-btn-asignar').disabled = false;
+          document.getElementById('modal-btn-asignar').style.opacity = '1';
+        }
+      });
+
+      // Cerrar modal
+      document.getElementById('modal-btn-cancelar').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+
+      // Ejecutar asignación
+      document.getElementById('modal-btn-asignar').addEventListener('click', async () => {
+        const idAgente = selAgente.value;
+        const tipoTraslado = document.getElementById('modal-tipo-traslado-masivo').value;
+        const obs = document.getElementById('modal-obs-masivo').value.trim();
+        const msgDiv = document.getElementById('modal-msg');
+
+        if (!idAgente) { alert('Selecciona un agente.'); return; }
+        if (!tipoTraslado) { alert('Selecciona un tipo de traslado.'); return; }
+
+        const btn = document.getElementById('modal-btn-asignar');
+        btn.disabled = true;
+        btn.textContent = 'Procesando...';
+
+        try {
+          msgDiv.innerHTML = '<span style="color:#6b7280;">Enviando asignaciones al servidor...</span>';
+
+          const payload = {
+            action: 'asignarPmrMasivo',
+            idsPmr: Array.from(selectedPmrIds),
+            idAgente,
+            tipoTraslado,
+            observaciones: obs
+          };
+
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+
+          const json = await res.json();
+          if (!json.ok) throw new Error(json.error || 'Error desconocido');
+
+          msgDiv.innerHTML = `<span style="color:#16a34a;font-weight:900;">✅ ¡Éxito! ${json.exitosos} pasajeros asignados correctamente.</span>`;
+
+          setTimeout(async () => {
+            document.body.removeChild(modal);
+            deselectAll();
+            await cargarDatos();
+          }, 2000);
+
+        } catch (err) {
+          alert('Error al asignar: ' + err.message);
+          btn.disabled = false;
+          btn.textContent = 'Confirmar Asignación';
+          msgDiv.innerHTML = `<span style="color:#dc2626;">Error: ${err.message}</span>`;
+        }
+      });
+    }
+
+    // ============== EDITAR AGENTE ==============
+
+    function abrirEditarAgente() {
+      if (!cacheAgentes || cacheAgentes.length === 0) {
+        alert('No hay agentes cargados en el sistema.');
+        return;
+      }
+
+      const modal = document.createElement('div');
+      modal.id = 'modal-editar-agente';
+      modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:15px;';
+
+      const content = document.createElement('div');
+      content.style.cssText = 'background:#fff;border-radius:20px;padding:24px;width:100%;max-width:500px;box-shadow:0 10px 40px rgba(0,0,0,0.4);font-family:inherit;';
+
+      content.innerHTML = `
+        <h2 style="margin:0 0 16px 0;color:#1e40af;font-size:18px;">Editar Agente</h2>
+        
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Seleccionar Agente</label>
+          <select id="modal-ed-agente" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;">
+            <option value="">— Seleccionar —</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Nombre</label>
+          <input type="text" id="modal-ed-nombre" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;" disabled />
+        </div>
+        
+        <div style="margin-bottom:12px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">RUT</label>
+          <input type="text" id="modal-ed-rut" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;" disabled />
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Teléfono</label>
+          <input type="text" id="modal-ed-telefono" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;" disabled />
+        </div>
+        
+        <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;">
+          <button id="modal-ed-btn-cancelar" style="padding:10px 20px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-weight:700;font-size:13px;">Cancelar</button>
+          <button id="modal-ed-btn-guardar" style="padding:10px 24px;border-radius:999px;border:none;background:linear-gradient(90deg, #1e40af, #1e3a8a);color:#fff;cursor:pointer;font-weight:900;font-size:13px;" disabled>Guardar Cambios</button>
+        </div>
+        <div id="modal-ed-msg" style="margin-top:14px;font-size:12px;text-align:center;"></div>
+      `;
+
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+
+      const selAgente = document.getElementById('modal-ed-agente');
+      const inNombre = document.getElementById('modal-ed-nombre');
+      const inRut = document.getElementById('modal-ed-rut');
+      const inTelefono = document.getElementById('modal-ed-telefono');
+      const btnGuardar = document.getElementById('modal-ed-btn-guardar');
+      const msgDiv = document.getElementById('modal-ed-msg');
+
+      // Ordenar por nombre y poblar
+      const agentesSort = [...cacheAgentes].sort((a,b) => String(a.nombre || "").localeCompare(String(b.nombre || "")));
+      agentesSort.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.idAgente;
+        opt.textContent = `${a.nombre || a.idAgente} (${a.idAgente})`;
+        selAgente.appendChild(opt);
+      });
+
+      // Llenar campos al seleccionar
+      selAgente.addEventListener('change', () => {
+        const idAg = selAgente.value;
+        if (!idAg) {
+          inNombre.value = "";
+          inRut.value = "";
+          inTelefono.value = "";
+          inNombre.disabled = true;
+          inRut.disabled = true;
+          inTelefono.disabled = true;
+          btnGuardar.disabled = true;
+          msgDiv.innerHTML = "";
+          return;
+        }
+
+        const ag = cacheAgentes.find(x => x.idAgente === idAg);
+        if (ag) {
+          inNombre.value = ag.nombre || "";
+          inRut.value = ag.rut || "";
+          inTelefono.value = ag.telefono || "";
+          inNombre.disabled = false;
+          inRut.disabled = false;
+          inTelefono.disabled = false;
+          btnGuardar.disabled = false;
+          msgDiv.innerHTML = "";
+        }
+      });
+
+      // Cerrar modal
+      document.getElementById('modal-ed-btn-cancelar').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+
+      // Guardar
+      btnGuardar.addEventListener('click', async () => {
+        const idAgente = selAgente.value;
+        const nombre = inNombre.value.trim();
+        const rut = inRut.value.trim();
+        const telefono = inTelefono.value.trim();
+
+        if (!idAgente) return;
+        if (!nombre && !rut && !telefono) {
+          msgDiv.innerHTML = '<span style="color:#dc2626;">No hay datos para guardar.</span>';
+          return;
+        }
+
+        btnGuardar.disabled = true;
+        btnGuardar.textContent = 'Guardando...';
+
+        try {
+          msgDiv.innerHTML = '<span style="color:#6b7280;">Guardando cambios del agente...</span>';
+
+          const payload = {
+            action: 'modificarAgente',
+            idAgente,
+            nombre,
+            rut,
+            telefono
+          };
+
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+
+          const json = await res.json();
+          if (!json.ok) throw new Error(json.error || 'Error desconocido');
+
+          msgDiv.innerHTML = `<span style="color:#16a34a;font-weight:900;">✅ ¡Cambios guardados con éxito!</span>`;
+
+          setTimeout(async () => {
+            document.body.removeChild(modal);
+            if (window.notificarUpdate) window.notificarUpdate("agentes");
+            await cargarDatos();
+          }, 1500);
+
+        } catch (err) {
+          btnGuardar.disabled = false;
+          btnGuardar.textContent = 'Guardar Cambios';
+          msgDiv.innerHTML = `<span style="color:#dc2626;">Error: ${err.message}</span>`;
+        }
+      });
+    }
+
+    function iniciarAutoRefresh() {
+      if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+      // Firebase Realtime active: Polling disabled
+      autoRefreshSeconds = 0;
+      const box = document.getElementById("auto-refresh-box");
+      if (box) box.style.display = "none";
+    }
+
+    /* --------- FECHA / HORA --------- */
+
+    function parseFechaSolo(fecha) {
+      if (!fecha) return null;
+      if (fecha instanceof Date) return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+
+      const s = String(fecha).trim();
+
+      let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+
+      m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+
+      m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+      if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+
+      const d = new Date(s);
+      if (!isNaN(d)) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      return null;
+    }
+
+    function hoyTrunc() {
+      const d = new Date();
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+
+    function addDias(date, dias) {
+      const d = new Date(date);
+      d.setDate(d.getDate() + dias);
+      return d;
+    }
+
+    function formatearHora(horaRaw) {
+      if (!horaRaw) return "";
+      if (horaRaw instanceof Date) {
+        const hh = String(horaRaw.getHours()).padStart(2, "0");
+        const mm = String(horaRaw.getMinutes()).padStart(2, "0");
+        return `${hh}:${mm}`;
+      }
+      const s = String(horaRaw);
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
+      return s;
+    }
+
+    function fmtHHMM(d) {
+      if (!d || !(d instanceof Date) || isNaN(d)) return "";
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+
+    function fmtDateTimeCL(d) {
+      if (!d || !(d instanceof Date) || isNaN(d)) return "";
+      return d.toLocaleString("es-CL", {
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit"
+      });
+    }
+
+    function normalizarFechaExcel(valor) {
+      if (valor === null || valor === undefined || valor === "") return "";
+
+      if (typeof valor === "number") {
+        const ms = Math.round((valor - 25569) * 86400 * 1000);
+        const d = new Date(ms);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      }
+
+      if (valor instanceof Date) {
+        const yyyy = valor.getUTCFullYear();
+        const mm = String(valor.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(valor.getUTCDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      }
+
+      const s = String(valor).trim();
+
+      let m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+      m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+      if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+
+      m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+
+      const d = new Date(s);
+      if (!isNaN(d)) {
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      return s;
+    }
+
+    function normalizarHoraExcel(valor) {
+      if (valor === null || valor === undefined || valor === "") return "";
+      if (typeof valor === "number") {
+        const totalSeconds = Math.round(valor * 86400);
+        const hh = String(Math.floor(totalSeconds / 3600) % 24).padStart(2, "0");
+        const mm = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+        return `${hh}:${mm}`;
+      }
+      const s = String(valor).trim();
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
+      return s;
+    }
+
+    function normalizarTerminalGeneral(term) {
+      const t = String(term || "").trim();
+      const up = t.toUpperCase();
+      if (up === "T1") return "Nacional";
+      if (up === "T2") return "Internacional";
+      if (t.toLowerCase() === "nacional") return "Nacional";
+      if (t.toLowerCase() === "internacional") return "Internacional";
+      return t;
+    }
+
+    function getTipoTrasladoSugerido(aerolinea) {
+      const n = normTxt(aerolinea);
+      // Regla: Delta, Air France, KLM, Air Canada = Tramo Completo. Resto = Ultima Milla.
+      if (n.includes("delta") || n.includes("air france") || n.includes("klm") || n.includes("air canada")) {
+        return "Tramo Completo";
+      }
+      return "Ultima Milla";
+    }
+
+    function normTxt(s) {
+      return String(s || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+    }
+
+    function normalizarTipoAsistenciaPmr(tipo) {
+      const s = String(tipo || "").trim().toUpperCase();
+      if (!s) return "";
+      if (s === "WHC") return "WCHC";
+      if (s === "WHR") return "WCHR";
+      if (s === "WHS") return "WCHS";
+      return s;
+    }
+
+    function vueloKey(numeroVuelo, fechaAny) {
+      const ymd = normalizarFechaExcel(fechaAny);
+      return `${String(numeroVuelo || "").trim()}||${ymd}`;
+    }
+    function vueloKeyFromVuelo(v) {
+      return vueloKey(v?.numeroVuelo, v?.fecha);
+    }
+
+    function pmrFechaYmd(p) {
+      const f = p?.fechaVuelo || p?.fecha || p?.fechaVueloPmr || p?.fecha_vuelo || "";
+      if (f) return normalizarFechaExcel(f);
+      const v = getVueloDePmr(p);
+      return v ? normalizarFechaExcel(v.fecha) : "";
+    }
+    function pmrKey(p) {
+      const ymd = pmrFechaYmd(p);
+      return ymd ? `${String(p.vuelo || "").trim()}||${ymd}` : String(p.vuelo || "").trim();
+    }
+
+    function obtenerDateTimeVuelo(v) {
+      const f = parseFechaSolo(v?.fecha);
+      if (!f) return null;
+
+      const h = formatearHora(v?.horaProgramada);
+      if (!h) return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+
+      const m = String(h).match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+
+      const hh = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      if (isNaN(hh) || isNaN(mm)) return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+
+      return new Date(f.getFullYear(), f.getMonth(), f.getDate(), hh, mm, 0, 0);
+    }
+
+    function obtenerDateTimeIdeal(v) {
+      const dt = obtenerDateTimeVuelo(v);
+      if (!dt) return null;
+      const ts = String(v?.tipoServicio || "").toLowerCase().trim();
+      const offsetMin = (ts === "embarque") ? 90 : (ts === "desembarque" ? 20 : 0);
+      return new Date(dt.getTime() - offsetMin * 60000);
+    }
+
+    function obtenerDateTimeAsignacion(a) {
+      const f = parseFechaSolo(a?.fechaAsignacion);
+      if (!f) return null;
+
+      const h = formatearHora(a?.horaAsignacion);
+      const m = String(h || "").match(/(\d{1,2}):(\d{2})/);
+
+      if (m) {
+        const hh = parseInt(m[1], 10);
+        const mm = parseInt(m[2], 10);
+        if (!isNaN(hh) && !isNaN(mm)) {
+          return new Date(f.getFullYear(), f.getMonth(), f.getDate(), hh, mm, 0, 0);
+        }
+      }
+      return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 0, 0, 0, 0);
+    }
+
+    function timeOrdenVuelo(v) {
+      const di = obtenerDateTimeIdeal(v);
+      if (di) return di.getTime();
+      const dv = obtenerDateTimeVuelo(v);
+      if (dv) return dv.getTime();
+      return 9e15;
+    }
+
+    function vueloEsFuturo(v) {
+      const dt = obtenerDateTimeVuelo(v);
+      if (!dt) return false;
+      const ahora = new Date();
+      // Permitir visualización hasta 30 minutos después de la hora programada
+      const limite = dt.getTime() + (30 * 60 * 1000);
+      return limite >= ahora.getTime();
+    }
+
+    function minutosHastaIdeal(v) {
+      const dt = obtenerDateTimeIdeal(v);
+      if (!dt) return null;
+      const ahora = new Date();
+      return Math.round((dt.getTime() - ahora.getTime()) / 60000);
+    }
+
+    function calcularHoraIdealAsignacion(v) {
+      const ideal = obtenerDateTimeIdeal(v);
+      if (!ideal) return "";
+      return fmtHHMM(ideal);
+    }
+
+    function clasesFilaVuelo(v) {
+      const ts = String(v?.tipoServicio || "").toLowerCase().trim();
+      const minsIdeal = minutosHastaIdeal(v);
+      const dt = obtenerDateTimeVuelo(v);
+      const ahora = new Date();
+
+      let cls = "";
+      if (ts === "embarque") cls += " row-embarque";
+      if (ts === "desembarque") cls += " row-desembarque";
+
+      if (dt && ahora.getTime() > dt.getTime()) {
+        cls += " row-overdue";
+      } else if (minsIdeal !== null) {
+        if (ts === "embarque" && minsIdeal <= 30) cls += " row-warning";
+        if (ts === "desembarque" && minsIdeal <= 20) cls += " row-warning";
+      }
+      return cls.trim();
+    }
+
+
+    function badgeClassIdeal(v) {
+      const ts = String(v?.tipoServicio || "").toLowerCase().trim();
+      const minsIdeal = minutosHastaIdeal(v);
+      let c = "badge";
+      if (ts === "embarque") c += " badge-emb";
+      else if (ts === "desembarque") c += " badge-des";
+
+      if (minsIdeal !== null) {
+        if (ts === "embarque" && minsIdeal <= 30) c += " badge-warn";
+        if (ts === "desembarque" && minsIdeal <= 20) c += " badge-warn";
+      }
+      return c;
+    }
+
+    function calcularOrigenDestinoFront(tipoServicioVuelo, tipoAsistencia, tipoTraslado, puerta, espigon) {
+      const ts = (tipoServicioVuelo || "").toString().toLowerCase().trim();
+      const ta = normalizarTipoAsistenciaPmr(tipoAsistencia || "");
+      const tt = (tipoTraslado || "").toString().toLowerCase().trim();
+
+      const puertaEspigon = ((puerta || "") + (espigon || "")).trim();
+      const puertaEmbarque = puertaEspigon ? `Puerta Embarque ${puertaEspigon}` : "Puerta Embarque";
+
+      const esUltimaMilla = tt.includes("ultima") || tt.includes("última");
+      const esTramoCompleto = tt.includes("tramo");
+
+      const etiquetaAvion = (ta === "WCHC" || ta === "WHC") ? "Asiento Avión" : "Puerta Avión";
+
+      let origen = "";
+      let destino = "";
+
+      if (esUltimaMilla) {
+        if (ts === "embarque") { origen = puertaEmbarque; destino = etiquetaAvion; }
+        else if (ts === "desembarque") { origen = etiquetaAvion; destino = puertaEmbarque; }
+      } else if (esTramoCompleto) {
+        if (ts === "embarque") { origen = "Elección del Pasajero"; destino = etiquetaAvion; }
+        else if (ts === "desembarque") { origen = etiquetaAvion; destino = "Elección del Pasajero"; }
+      }
+      return { origen, destino };
+    }
+
+    function limpiarStr(v) { return (v === null || v === undefined) ? "" : String(v).trim(); }
+    function detectarSeparadorCsv(text) {
+      const sample = (text || "").split(/\r?\n/).slice(0, 10).join("\n");
+      const commas = (sample.match(/,/g) || []).length;
+      const semis = (sample.match(/;/g) || []).length;
+      return semis > commas ? ";" : ",";
+    }
+    function parseCSV(text) {
+      const sep = detectarSeparadorCsv(text);
+      const rows = []; let row = []; let cur = ""; let inQuotes = false;
+      function pushCell() { row.push(cur); cur = ""; }
+      function pushRow() { rows.push(row); row = []; }
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (ch === '"') {
+          if (inQuotes && next === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+          continue;
+        }
+        if (!inQuotes && ch === sep) { pushCell(); continue; }
+        if (!inQuotes && (ch === "\n" || ch === "\r")) {
+          if (ch === "\r" && next === "\n") i++;
+          pushCell(); pushRow(); continue;
+        }
+        cur += ch;
+      }
+      pushCell(); pushRow();
+      return rows.filter(r => r.some(c => String(c || "").trim() !== ""));
+    }
+    function getColIndex(headers, candidates) {
+      const norm = (s) => String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+      const hs = headers.map(h => norm(h));
+      for (const cand of candidates) {
+        const c = norm(cand); const idx = hs.indexOf(c);
+        if (idx !== -1) return idx;
+      }
+      for (let i = 0; i < hs.length; i++) {
+        for (const cand of candidates) {
+          const c = norm(cand);
+          if (c && hs[i].includes(c)) return i;
+        }
+      }
+      return -1;
+    }
+
+    function splitOrigenDestino_(ruta) {
+      const s = String(ruta || "").trim();
+      if (!s) return { origen: "", destino: "" };
+
+      const parts = s.split(/[-–—]/).map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        return { origen: parts[0].toUpperCase(), destino: parts[1].toUpperCase() };
+      }
+
+      const parts2 = s.split(/[\/|]/).map(p => p.trim()).filter(Boolean);
+      if (parts2.length >= 2) {
+        return { origen: parts2[0].toUpperCase(), destino: parts2[1].toUpperCase() };
+      }
+
+      return { origen: "", destino: "" };
+    }
+
+    function inferirTipoServicioPorRuta_(origen, destino) {
+      const d = String(destino || "").trim().toUpperCase();
+      if (!d) return "";
+      return (d === "SCL") ? "Desembarque" : "Embarque";
+    }
+
+    function getVueloDePmr(pmr) {
+      if (!pmr) return null;
+
+      const idv = pmr.idVuelo || pmr.id_vuelo || "";
+      if (idv) {
+        const exactId = cacheVuelos.find(v => String(v.idVuelo) === String(idv));
+        if (exactId) return exactId;
+      }
+
+      const num = pmr.vuelo ? String(pmr.vuelo).trim() : "";
+      if (!num) return null;
+
+      const fP = pmr.fechaVuelo || pmr.fecha || pmr.fechaVueloPmr || pmr.fecha_vuelo || "";
+      const fNorm = fP ? normalizarFechaExcel(fP) : "";
+
+      if (fNorm) {
+        const exact = cacheVuelos.find(v =>
+          String(v.numeroVuelo).trim() === num &&
+          normalizarFechaExcel(v.fecha) === fNorm
+        );
+        if (exact) return exact;
+      }
+
+      const hoy = hoyTrunc();
+      const manana = addDias(hoy, 1);
+      const candidates = cacheVuelos.filter(v => String(v.numeroVuelo).trim() === num);
+
+      const best = candidates.find(v => {
+        const f = parseFechaSolo(v.fecha);
+        if (!f) return false;
+        return f.getTime() === hoy.getTime() || f.getTime() === manana.getTime();
+      });
+
+      return best || candidates[0] || null;
+    }
+
+    // const MAX_ASIG_POR_AGENTE = 7; // Eliminado por solicitud
+
+    function estadoAsignacionEsActiva_(estado) {
+      const s = normTxt(estado);
+      if (!s) return false;
+
+      // Estados que consideramos "cerrados" (no cuentan para la carga del agente)
+      const cerrados = [
+        "finalizado",
+        "terminado",
+        "cancelado",
+        "rechazado",
+        "expirado",
+        "vencido",
+        "anulado"
+      ];
+      return !cerrados.includes(s);
+    }
+
+    function contarAsignacionesActivasAgente_(idAgente) {
+      const id = String(idAgente || "").trim();
+      if (!id) return 0;
+
+      return (cacheAsignaciones || [])
+        .filter(a => String(a.idAgente || "").trim() === id)
+        .filter(a => estadoAsignacionEsActiva_(a.estadoAsignacion || a.estado || ""))
+        .length;
+    }
+
+    function prettyEstadoAgente_(a) {
+      const s = normTxt(a?.estadoServicio || a?.estado || "");
+      if (!s) return "sin estado";
+      if (s === "disponible") return "disponible";
+      if (s === "en asignacion") return "en asignación";
+      if (s === "en servicio") return "en servicio";
+      return s;
+    }
+
+    // ✅ Nuevo criterio: un agente es "asignable" si:
+    //  - Está en la misma terminal del PMR (Nacional/Internacional)
+    //  - Su estado de servicio es compatible (disponible / en asignación / en servicio)
+    //  - Tiene menos de MAX_ASIG_POR_AGENTE asignaciones activas
+    function agentesAsignablesEnTerminal(terminal) {
+      const term = normTxt(terminal);
+      const estadosPermitidos = ["disponible", "en asignacion", "en servicio", "asignado"];
+
+      return (cacheAgentes || [])
+        .map(a => {
+          const ub = normTxt(terminalFromAgente_(a));
+          const carga = contarAsignacionesActivasAgente_(a.idAgente);
+          return { ...a, _ubNorm: ub, _carga: carga };
+        })
+        .filter(a => {
+          if (term) {
+            if (!a._ubNorm) return false;
+            if (a._ubNorm !== term) return false;
+          }
+          const est = normTxt(a.estadoServicio || a.estado || "");
+          if (est && !estadosPermitidos.includes(est)) return false;
+          return true; // Sin límite
+        })
+        .sort((a, b) => (a._carga - b._carga) || String(a.nombre || "").localeCompare(String(b.nombre || "")));
+    }
+
+
+    function sugerirTipoTrasladoPorAerolinea(vuelo) {
+      const aero = String(vuelo?.aerolinea || "").trim().toUpperCase();
+      if (aero === "LATAM") return "Ultima Milla";
+      return "";
+    }
+
+    function terminalFromAgente_(a) {
+      const raw = a?.ubicacion ?? a?.terminal ?? "";
+      return normalizarTerminalGeneral(raw);
+    }
+
+    function statsAgentesPorTerminal_(terminal) {
+      const termN = normTxt(terminal);
+      let total = 0;
+      let disponibles = 0;
+
+      for (const a of (cacheAgentes || [])) {
+        const t = normTxt(terminalFromAgente_(a));
+        if (!t || t !== termN) continue;
+
+        const est = normTxt(a.estadoServicio || a.estado || "");
+        const presente = (est === "disponible" || est === "en servicio" || est === "en asignacion");
+        if (!presente) continue;
+
+        total++;
+        if (est === "disponible") disponibles++;
+      }
+
+      const pct = total ? (disponibles / total) : 0;
+      return { total, disponibles, pct };
+    }
+
+    function rightColorForStats_(stats) {
+      if (!stats || !stats.total) return "var(--term-right-neutral)";
+      if (stats.pct >= 0.75) return "var(--term-right-ok)";
+      if (stats.pct >= 0.40) return "var(--term-right-warn)";
+      return "var(--term-right-bad)";
+    }
+
+    function actualizarTarjetasDisponibilidadPmr() {
+      const cardN = document.getElementById("term-card-nacional");
+      const cardI = document.getElementById("term-card-internacional");
+      if (!cardN || !cardI) return;
+
+      const n = statsAgentesPorTerminal_("Nacional");
+      const i = statsAgentesPorTerminal_("Internacional");
+
+      cardN.style.setProperty("--right-color", rightColorForStats_(n));
+      cardI.style.setProperty("--right-color", rightColorForStats_(i));
+
+      const nCount = document.getElementById("term-nac-count");
+      const nMeta = document.getElementById("term-nac-meta");
+      const iCount = document.getElementById("term-int-count");
+      const iMeta = document.getElementById("term-int-meta");
+
+      if (nCount) nCount.textContent = String(n.disponibles ?? 0);
+      if (nMeta) nMeta.textContent = `${n.disponibles ?? 0} / ${n.total ?? 0} (${Math.round((n.pct || 0) * 100)}%)`;
+
+      if (iCount) iCount.textContent = String(i.disponibles ?? 0);
+      if (iMeta) iMeta.textContent = `${i.disponibles ?? 0} / ${i.total ?? 0} (${Math.round((i.pct || 0) * 100)}%)`;
+    }
+
+    async function cargarDatos(silencioso = false, types = []) {
+      const apiStatus = document.getElementById("api-status");
+      const lastUpdate = document.getElementById("last-update");
+
+      let url = API_URL + "?action=listAll";
+      if (types && types.length > 0) {
+        url += "&include=" + types.join(",");
+        if (!silencioso) apiStatus.textContent = "Actualizando " + types.join(", ") + "...";
+      } else {
+        if (!silencioso) apiStatus.textContent = "Conectando con API...";
+      }
+
+      try {
+        const res = await fetch(url);
+        const text = await res.text();
+        let json = null;
+        try { json = JSON.parse(text); }
+        catch (e) { throw new Error("Respuesta no es JSON. Revisa permisos/deploy del WebApp."); }
+
+        if (!json.ok) throw new Error(json.error || "Error en listAll");
+
+        // Partial Update: Only overwrite cache if key exists in response
+        if (json.vuelos) cacheVuelos = json.vuelos;
+        if (json.pasajeros) cachePasajeros = json.pasajeros;
+        if (json.asignaciones) cacheAsignaciones = json.asignaciones;
+        if (json.agentes) cacheAgentes = json.agentes;
+
+        if (!silencioso) apiStatus.textContent = "Conectado a la API";
+
+        const ahora = new Date();
+        lastUpdate.textContent = "Última actualización: " +
+          ahora.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+
+        // Optimized Rendering
+        const refreshAll = (!types || types.length === 0);
+
+        if (refreshAll || types.includes("vuelos")) renderVistaVuelos();
+        if (refreshAll || types.includes("pasajeros") || types.includes("pmr") || types.includes("vuelos")) renderVistaPmr();
+        if (refreshAll || types.includes("asignaciones")) renderVistaAsignaciones();
+        if (refreshAll || types.includes("agentes")) renderVistaAgentes();
+        if (refreshAll || types.includes("vuelos") || types.includes("pmr")) renderVistaTimeline();
+        renderVistaDashboard();
+
+        if (refreshAll) {
+          llenarCombosAcciones();
+          iniciarAutoRefresh(); // Keep it if it was there (even if empty/legacy)
+        } else {
+          if (types.includes("vuelos")) llenarCombosAcciones();
+        }
+
+      } catch (err) {
+        console.error(err);
+        apiStatus.textContent = "Error al conectar con la API";
+        if (!silencioso) alert("Error al cargar datos: " + (err.message || err));
+      }
+    }
+
+    function renderVistaActual() {
+      const btnActivo = document.querySelector(".nav-btn.active");
+      const vista = btnActivo ? btnActivo.dataset.view : "vuelos";
+
+      if (vista === "dashboard") renderVistaDashboard();
+      else if (vista === "vuelos") renderVistaVuelos();
+      else if (vista === "pmr") renderVistaPmr();
+      else if (vista === "asignaciones") renderVistaAsignaciones();
+      else if (vista === "agentes") renderVistaAgentes();
+      else if (vista === "timeline") renderVistaTimeline();
+      else if (vista === "como") renderVistaComo();
+    }
+
+    function setTituloVista(titulo) {
+      const viewTitle = document.getElementById("view-title");
+      if (viewTitle) viewTitle.textContent = titulo;
+    }
+
+    function setChipInfo(label, texto) {
+      const chipInfo = document.getElementById("chip-info-vista");
+      if (chipInfo) {
+        chipInfo.innerHTML = `<span class="chip-label">${label}:</span><span>${texto}</span>`;
+      }
+    }
+
+    function renderVistaComo() {
+      setTituloVista("¿Cómo se usa?");
+      setChipInfo("Manual", "Guía rápida de uso del panel supervisor.");
+      // Contenido es estático (HTML), no requiere render dinámico.
+    }
+
+    function filtrarPmrDesdeVuelo(numeroVuelo, fecha) {
+      // Switch view
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      document.querySelector('.nav-btn[data-view="pmr"]').classList.add("active");
+
+      document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
+      document.getElementById("view-pmr").classList.add("active");
+
+      // Set filter
+      const selFiltroVuelo = document.getElementById("filtro-pmr-vuelo");
+      // Key format: NUMERO||YYYY-MM-DD
+      const key = (numeroVuelo || "").trim().toUpperCase() + "||" + (fecha || "");
+
+      if (selFiltroVuelo) {
+        // Force render to ensure options are available
+        renderVistaPmr();
+
+        selFiltroVuelo.value = key;
+
+        if (selFiltroVuelo.value === key) {
+          renderVistaPmr();
+        } else {
+          console.warn("No filter option found for key:", key, ". Available options may differ.");
+        }
+      } else {
+        renderVistaPmr();
+      }
+    }
+
+    function renderVistaVuelos() {
+      const tbody = document.getElementById("tbody-vuelos");
+      const empty = document.getElementById("empty-vuelos");
+      const filtroNumInput = document.getElementById("filtro-vuelo-num");
+      const filtroAeroInput = document.getElementById("filtro-aerolinea");
+      const datalistAero = document.getElementById("lista-aerolineas");
+      tbody.innerHTML = "";
+
+      const hoy = hoyTrunc();
+      const manana = addDias(hoy, 1);
+
+      const vuelosConPmrIds = new Set();
+      cachePasajeros
+        .filter(p => (p.estadoPmr || "").toLowerCase() === "en espera")
+        .forEach(p => {
+          const v = getVueloDePmr(p);
+          if (v?.idVuelo) vuelosConPmrIds.add(String(v.idVuelo));
+        });
+
+      const filtroNum = (filtroNumInput?.value || "").trim().toLowerCase();
+      const filtroAero = (filtroAeroInput?.value || "").trim().toLowerCase();
+
+      if (datalistAero) {
+        const setAero = new Set();
+        cacheVuelos.forEach(v => { if (v.aerolinea) setAero.add(String(v.aerolinea)); });
+        datalistAero.innerHTML = "";
+        Array.from(setAero).sort().forEach(a => {
+          const opt = document.createElement("option");
+          opt.value = a;
+          datalistAero.appendChild(opt);
+        });
+      }
+
+      let filtrados = cacheVuelos.filter(v => {
+        const f = parseFechaSolo(v.fecha);
+        if (!f) return false;
+
+        const esHoy = f.getTime() === hoy.getTime();
+        const esManana = f.getTime() === manana.getTime();
+        if (!esHoy && !esManana) return false;
+
+        if (!vueloEsFuturo(v)) return false;
+        if (!vuelosConPmrIds.has(String(v.idVuelo || ""))) return false;
+
+        const numVuelo = (v.numeroVuelo || "").toString();
+        const aerolinea = (v.aerolinea || "").toString();
+
+        if (filtroNum && !numVuelo.toLowerCase().includes(filtroNum)) return false;
+        if (filtroAero && aerolinea.toLowerCase() !== filtroAero) return false;
+
+        return true;
+      });
+
+      filtrados.sort((a, b) => timeOrdenVuelo(a) - timeOrdenVuelo(b));
+      empty.style.display = filtrados.length ? "none" : "block";
+
+      filtrados.forEach(v => {
+        const tr = document.createElement("tr");
+        tr.className = clasesFilaVuelo(v);
+
+        const horaIdeal = calcularHoraIdealAsignacion(v);
+        const badgeCls = badgeClassIdeal(v);
+        const badgeHtml = horaIdeal ? `<span class="${badgeCls}">${horaIdeal}</span>` : "";
+
+        // Flight Filter Button logic
+        const btnVuelo = `<button onclick="filtrarPmrDesdeVuelo('${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
+                            class="btn-link-vuelo" title="Ver pasajeros de este vuelo" style="background:none; border:none; color:inherit; font:inherit; cursor:pointer; text-decoration:underline;">
+                            ${v.numeroVuelo || ""}
+                          </button>`;
+
+        // Master Assign Button (only if PMRs > 0)
+        let cellPmr = `${v.cantPmr || 0}`;
+        if ((v.cantPmr || 0) > 0) {
+          cellPmr += ` <button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
+                        style="margin-left:6px;padding:2px 6px;border-radius:4px;border:none;background:#2563eb;color:white;font-size:10px;cursor:pointer;vertical-align:middle;" 
+                        title="Asignar Maestro y Apoyos">
+                        Asignar
+                        </button>`;
+        }
+
+        // Airplane Icon for Assignment (visible only if PMRs > 0)
+        const iconoAsignar = (v.cantPmr || 0) > 0
+          ? `<button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
+                      style="background:none;border:none;font-size:20px;cursor:pointer;padding:4px;transition:transform 0.2s;" 
+                      onmouseover="this.style.transform='scale(1.3)'" 
+                      onmouseout="this.style.transform='scale(1)'"
+                      title="Asignar Maestro y Apoyos a este vuelo">
+                ✈️
+              </button>`
+          : `<span style="opacity:0.2;font-size:18px;padding:4px;">✈️</span>`;
+
+        tr.innerHTML = `
+        <td style="text-align:center;">${iconoAsignar}</td>
+        <td>${v.idVuelo || ""}</td>
+        <td>${normalizarFechaExcel(v.fecha) || (v.fecha || "")}</td>
+        <td>${formatearHora(v.horaProgramada)}</td>
+        <td>${badgeHtml}</td>
+        <td>${v.aerolinea || ""}</td>
+        <td>${btnVuelo}</td>
+        <td>${v.terminal || ""}</td>
+        <td>${v.puerta || ""}</td>
+        <td>${v.espigon || ""}</td>
+        <td>${cellPmr}</td>
+        <td>${v.tipoServicio || ""}</td>
+        <td>${v.estadoVuelo || ""}</td>
+        <td>${v.tipo || v.tipoAvion || ""}</td>
+        <td>${v.origen || ""}</td>
+        <td>${v.destino || ""}</td>
+        <td>${v.observaciones || ""}</td>
+      `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("view-title").textContent = "Vuelos";
+      document.getElementById("chip-info-vista").innerHTML =
+        `<span class="chip-label">Vuelos:</span><span>Hoy y mañana (solo próximas horas, con PMR en espera)</span>`;
+    }
+
+    function renderVistaPmr() {
+      actualizarTarjetasDisponibilidadPmr();
+
+      const tbody = document.getElementById("tbody-pmr");
+      const empty = document.getElementById("empty-pmr");
+      const selFiltroVuelo = document.getElementById("filtro-pmr-vuelo");
+      const selFiltroEstado = document.getElementById("filtro-pmr-estado");
+      tbody.innerHTML = "";
+
+      const hoy = hoyTrunc();
+      const manana = addDias(hoy, 1);
+
+      let pmrBase = cachePasajeros.filter(p => {
+        const estadoNorm = normTxt(p.estadoPmr);
+        if (estadoNorm !== "en espera" && estadoNorm !== "en asignacion" && estadoNorm !== "asignado") return false;
+        const vuelo = getVueloDePmr(p);
+        if (!vuelo) return false;
+
+        const f = parseFechaSolo(vuelo.fecha);
+        if (!f) return false;
+
+        const okDia = (f.getTime() === hoy.getTime() || f.getTime() === manana.getTime());
+        if (!okDia) return false;
+
+        if (!vueloEsFuturo(vuelo)) return false;
+        return true;
+      });
+
+      pmrBase.sort((a, b) => {
+        const va = getVueloDePmr(a);
+        const vb = getVueloDePmr(b);
+        const ta = timeOrdenVuelo(va);
+        const tb = timeOrdenVuelo(vb);
+        if (ta !== tb) return ta - tb;
+        const ka = pmrKey(a);
+        const kb = pmrKey(b);
+        if (ka !== kb) return String(ka).localeCompare(String(kb));
+        return String(a.nombre || "").localeCompare(String(b.nombre || ""));
+      });
+
+      if (selFiltroVuelo) {
+        const valorActual = selFiltroVuelo.value;
+        selFiltroVuelo.innerHTML = '<option value="">Todos</option>';
+
+        const setKeys = new Set();
+        pmrBase.forEach(p => setKeys.add(pmrKey(p)));
+
+        const keysOrdenadas = Array.from(setKeys).map(k => {
+          const sample = pmrBase.find(p => pmrKey(p) === k);
+          const v = sample ? getVueloDePmr(sample) : null;
+          return { k, t: timeOrdenVuelo(v) };
+        }).sort((a, b) => (a.t - b.t) || String(a.k).localeCompare(String(b.k)));
+
+        keysOrdenadas.forEach(({ k }) => {
+          const [num, ymd] = k.includes("||") ? k.split("||") : [k, ""];
+          const opt = document.createElement("option");
+          opt.value = k;
+          opt.textContent = ymd ? `${num} | ${ymd}` : `${num}`;
+          selFiltroVuelo.appendChild(opt);
+        });
+
+        if (valorActual) selFiltroVuelo.value = valorActual;
+      }
+
+      if (selFiltroEstado) {
+        const valorActualEstado = selFiltroEstado.value;
+        selFiltroEstado.innerHTML = '<option value="">Todos</option>';
+
+        const setEstados = new Set();
+        pmrBase.forEach(p => { if (p.estadoPmr) setEstados.add(String(p.estadoPmr)); });
+        Array.from(setEstados).sort().forEach(est => {
+          const opt = document.createElement("option");
+          opt.value = est;
+          opt.textContent = est;
+          selFiltroEstado.appendChild(opt);
+        });
+
+        if (valorActualEstado) selFiltroEstado.value = valorActualEstado;
+      }
+
+      const vueloFiltroKey = (selFiltroVuelo?.value || "").trim();
+      const estadoFiltro = (selFiltroEstado?.value || "").trim();
+
+      if (vueloFiltroKey) pmrBase = pmrBase.filter(p => pmrKey(p) === vueloFiltroKey);
+      if (estadoFiltro) pmrBase = pmrBase.filter(p => String(p.estadoPmr || "").trim() === estadoFiltro);
+
+      empty.style.display = pmrBase.length ? "none" : "block";
+
+      let lastKey = null;
+      let groupIndex = -1;
+
+      pmrBase.forEach(p => {
+        const vuelo = getVueloDePmr(p);
+        const key = pmrKey(p);
+
+        if (key !== lastKey) {
+          groupIndex++;
+          lastKey = key;
+        }
+
+        const ts = String(vuelo?.tipoServicio || "").toLowerCase().trim();
+        const dtV = vuelo ? obtenerDateTimeVuelo(vuelo) : null;
+        const ahora = new Date();
+
+        let cls = (groupIndex % 2 === 0) ? "pmr-group-even" : "pmr-group-odd";
+        if (ts === "embarque") cls += " row-embarque";
+        else if (ts === "desembarque") cls += " row-desembarque";
+
+        if (dtV && ahora.getTime() > dtV.getTime()) {
+          cls += " row-overdue";
+        }
+
+        const tr = document.createElement("tr");
+        tr.className = cls;
+
+        const ymd = vuelo ? normalizarFechaExcel(vuelo.fecha) : (pmrFechaYmd(p) || "");
+        const horaVuelo = vuelo ? formatearHora(vuelo.horaProgramada) : "";
+        const tipoAsistencia = normalizarTipoAsistenciaPmr(p.tipoAsistencia || "");
+
+        const estadoBtnNorm = normTxt(p.estadoPmr);
+        let btnTxt = "Asignar";
+        let btnCls = "btn-assign";
+        let btnDisabled = "";
+        if (estadoBtnNorm === "en asignacion") {
+          btnTxt = "En asignación";
+          btnCls = "btn-assign btn-assign--pending";
+          btnDisabled = "disabled";
+        } else if (estadoBtnNorm === "asignado") {
+          btnTxt = "Asignado";
+          btnCls = "btn-assign btn-assign--assigned";
+          btnDisabled = "disabled";
+        }
+        const horaIdeal = vuelo ? calcularHoraIdealAsignacion(vuelo) : "";
+        const badgeCls = vuelo ? badgeClassIdeal(vuelo) : "badge";
+        const badgeHtml = horaIdeal ? `<span class="${badgeCls}">${horaIdeal}</span>` : "";
+        // ✅ Nuevo: Lógica de checkbox (habilitado solo para "En espera")
+        const canSelect = estadoBtnNorm === "en espera";
+        const isChecked = selectedPmrIds.has(String(p.idPmr));
+        const checkboxHtml = canSelect
+          ? `<input type="checkbox" class="pmr-checkbox" data-idpmr="${p.idPmr}" ${isChecked ? "checked" : ""} />`
+          : ``;
+
+        tr.innerHTML = `
+        <td style="text-align:center;">${checkboxHtml}</td>
+        <td>${p.idPmr || ""}</td>
+        <td>${p.vuelo || ""}</td>
+        <td>${ymd}</td>
+        <td>${horaVuelo}</td>
+        <td>${badgeHtml}</td>
+        <td>${p.nombre || ""}</td>
+        <td>${tipoAsistencia}</td>
+        <td>${p.edad || ""}</td>
+        <td>${p.origen || ""}</td>
+        <td>${p.destino || ""}</td>
+        <td>${p.estadoPmr || ""}</td>
+        <td><button class="${btnCls}" type="button" data-idpmr="${p.idPmr}" ${btnDisabled}>${btnTxt}</button></td>
+        <td>${formatearHora(p.horaInicio)}</td>
+        <td>${formatearHora(p.horaFin)}</td>
+        <td>${p.observaciones || ""}</td>
+      `;
+        tbody.appendChild(tr);
+      });
+
+      tbody.querySelectorAll(".btn-assign").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idPmr = btn.getAttribute("data-idpmr");
+          abrirAsignacionDesdePmr(idPmr);
+        });
+      });
+
+      document.getElementById("view-title").textContent = "Pasajeros PMR";
+      document.getElementById("chip-info-vista").innerHTML =
+        `<span class="chip-label">PMR:</span><span>Vuelos de hoy y mañana (solo próximas horas, En espera / En asignación / Asignado)</span>`;
+    }
+
+    function renderVistaAsignaciones() {
+      const tbody = document.getElementById("tbody-asignaciones");
+      const empty = document.getElementById("empty-asignaciones");
+      tbody.innerHTML = "";
+
+      const filtroNumInput = document.getElementById("filtro-asig-vuelo-num");
+      const filtroFechaInput = document.getElementById("filtro-asig-fecha");
+      const selTipo = document.getElementById("filtro-asig-tipo");
+      const selEstado = document.getElementById("filtro-asig-estado");
+
+      const numFiltro = (filtroNumInput?.value || "").trim().toLowerCase();
+      const fechaFiltro = (filtroFechaInput?.value || "").trim();
+      const tipoFiltro = (selTipo?.value || "").trim().toLowerCase();
+      const estadoFiltro = (selEstado?.value || "").trim().toLowerCase();
+
+      const ahora = new Date();
+      let base = [...cacheAsignaciones];
+      let chipRangoTxt = "";
+
+      if (fechaFiltro) {
+        const d0 = new Date(fechaFiltro);
+        const dayStart = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), 0, 0, 0, 0);
+        const dayEnd = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), 23, 59, 59, 999);
+
+        base = base.filter(a => {
+          const dt = obtenerDateTimeAsignacion(a);
+          if (dt) return dt.getTime() >= dayStart.getTime() && dt.getTime() <= dayEnd.getTime();
+
+          const fa = parseFechaSolo(a.fechaAsignacion);
+          const dd = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate());
+          return fa && fa.getTime() === dd.getTime();
+        });
+
+        chipRangoTxt = `Fecha ${dayStart.toLocaleDateString("es-CL")}`;
+      } else {
+        const windowEnd = ahora;
+        const windowStart = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
+
+        base = base.filter(a => {
+          const dt = obtenerDateTimeAsignacion(a);
+          if (!dt) return false;
+          return dt.getTime() >= windowStart.getTime() && dt.getTime() <= windowEnd.getTime();
+        });
+
+        chipRangoTxt = `Últimas 24h: ${fmtDateTimeCL(windowStart)} → ${fmtDateTimeCL(windowEnd)}`;
+      }
+
+      if (selTipo) {
+        const valActualTipo = selTipo.value;
+        selTipo.innerHTML = '<option value="">Todos</option>';
+        const setTipos = new Set();
+        base.forEach(a => { if (a.tipoTraslado) setTipos.add(String(a.tipoTraslado)); });
+        Array.from(setTipos).sort().forEach(t => {
+          const opt = document.createElement("option");
+          opt.value = t;
+          opt.textContent = t;
+          selTipo.appendChild(opt);
+        });
+        if (valActualTipo) selTipo.value = valActualTipo;
+      }
+
+      if (selEstado) {
+        const valActualEstado = selEstado.value;
+        selEstado.innerHTML = '<option value="">Todos</option>';
+        const setEstados = new Set();
+        base.forEach(a => { if (a.estadoAsignacion) setEstados.add(String(a.estadoAsignacion)); });
+        Array.from(setEstados).sort().forEach(e => {
+          const opt = document.createElement("option");
+          opt.value = e;
+          opt.textContent = e;
+          selEstado.appendChild(opt);
+        });
+        if (valActualEstado) selEstado.value = valActualEstado;
+      }
+
+      let filtrados = base.filter(a => {
+        if (numFiltro) {
+          const vuelo = cacheVuelos.find(v => String(v.idVuelo) === String(a.idVuelo));
+          const numVuelo = vuelo ? String(vuelo.numeroVuelo || "").toLowerCase() : "";
+          if (!numVuelo.includes(numFiltro)) return false;
+        }
+        if (tipoFiltro) {
+          const t = (a.tipoTraslado || "").toString().toLowerCase();
+          if (t !== tipoFiltro) return false;
+        }
+        if (estadoFiltro) {
+          const e = (a.estadoAsignacion || "").toString().toLowerCase();
+          if (e !== estadoFiltro) return false;
+        }
+        return true;
+      });
+
+      filtrados.sort((x, y) => {
+        const dx = obtenerDateTimeAsignacion(x);
+        const dy = obtenerDateTimeAsignacion(y);
+        const tx = dx ? dx.getTime() : 0;
+        const ty = dy ? dy.getTime() : 0;
+        return ty - tx;
+      });
+
+      empty.style.display = filtrados.length ? "none" : "block";
+
+      filtrados.forEach(a => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+        <td>${a.idAsignacion || ""}</td>
+        <td>${a.idVuelo || ""}</td>
+        <td>${a.idPmr || ""}</td>
+        <td>${a.idAgente || ""}</td>
+        <td>${a.fechaAsignacion || ""}</td>
+        <td>${formatearHora(a.horaAsignacion)}</td>
+        <td>${formatearHora(a.horaInicio)}</td>
+        <td>${formatearHora(a.horaFin)}</td>
+        <td>${a.estadoAsignacion || ""}</td>
+        <td>${a.tipoTraslado || ""}</td>
+        <td>${a.origenAsignacion || ""}</td>
+        <td>${a.destinoAsignacion || ""}</td>
+        <td>${a.justificacionCancel || ""}</td>
+        <td>${formatearHora(a.horaLimite)}</td>
+      `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("view-title").textContent = "Asignaciones";
+      document.getElementById("chip-info-vista").innerHTML =
+        `<span class="chip-label">Asignaciones:</span><span>${chipRangoTxt}</span>`;
+    }
+
+    function renderVistaAgentes() {
+      const tbody = document.getElementById("tbody-agentes");
+      const empty = document.getElementById("empty-agentes");
+      const filterInput = document.getElementById("filtro-agente-nombre");
+      const filterName = (filterInput?.value || "").trim().toLowerCase();
+
+      tbody.innerHTML = "";
+
+      if (!cacheAgentes.length) { empty.style.display = "block"; return; }
+      empty.style.display = "none";
+
+      // 1. Clonar para no mutar el cache directamente (aunque cacheAgentes se sobrescribe con cargarDatos)
+      let filtrados = [...cacheAgentes];
+
+      // 2. Filtrar por nombre
+      if (filterName) {
+        filtrados = filtrados.filter(a =>
+          String(a.nombre || "").toLowerCase().includes(filterName)
+        );
+      }
+
+      // 3. Ordenar por prioridad de estado
+      // Verde (Disponible) > Amarillo (En servicio/transito/asignacion) > Resto
+      filtrados.sort((a, b) => {
+        const estA = normTxt(a.estadoServicio || a.estado || "");
+        const estB = normTxt(b.estadoServicio || b.estado || "");
+
+        const priority = (s) => {
+          if (s === "disponible") return 1;
+          if (["en servicio", "en asignacion", "en asignación", "asignado"].includes(s)) return 2;
+          return 3;
+        };
+
+        const pA = priority(estA);
+        const pB = priority(estB);
+
+        if (pA !== pB) return pA - pB;
+        return String(a.nombre || "").localeCompare(String(b.nombre || ""));
+      });
+
+      if (!filtrados.length) {
+        empty.style.display = "block";
+        empty.textContent = "No se encontraron agentes con ese nombre.";
+      } else {
+        empty.style.display = "none";
+        empty.textContent = "No hay agentes configurados."; // Reset default text
+      }
+
+      filtrados.forEach(a => {
+        const estServRaw = String(a.estadoServicio || "").trim();
+        const estServ = estServRaw.toLowerCase();
+
+        let cls = "";
+        if (estServ === "disponible") {
+          cls = "row-agent-available";
+        } else if (estServ === "en asignacion" || estServ === "en asignación" || estServ === "en servicio") {
+          cls = "row-agent-busy";
+        } else {
+          cls = "";
+        }
+
+        const tr = document.createElement("tr");
+        if (cls) tr.className = cls;
+
+        const btnLogout = `<button onclick="accionForzarLogout('${a.idAgente}')" 
+                             class="btn-assign" style="padding: 2px 6px; font-size: 10px; background-color: #fca5a5; color: #7f1d1d; border: 1px solid #f87171;">
+                             Desconectar
+                           </button>`;
+
+        let telefonoStr = String(a.telefono || "").trim();
+        let whatsappHtml = "";
+        if (telefonoStr) {
+          let cleanNum = telefonoStr.replace(/\D/g, "");
+          let waNum = "";
+          if (cleanNum.startsWith("56") && cleanNum.length >= 10) {
+            waNum = "+" + cleanNum;
+          } else if (cleanNum.startsWith("9") && cleanNum.length === 9) {
+            waNum = "+56" + cleanNum;
+          } else if (cleanNum.length === 8) {
+            waNum = "+569" + cleanNum;
+          } else if (cleanNum.length > 0) {
+            waNum = "+56" + cleanNum;
+          }
+          whatsappHtml = `<a href="https://wa.me/${waNum}" target="_blank" style="text-decoration:none; color:inherit; display:flex; align-items:center; gap:5px;" title="Enviar WhatsApp">
+            <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#25D366;"><path d="M11.996 2C6.471 2 2 6.471 2 11.996c0 1.777.464 3.497 1.341 5.013L2 22l5.122-1.312A9.976 9.976 0 0 0 11.996 22c5.525 0 9.996-4.471 9.996-9.996S17.521 2 11.996 2zM12 20.177c-1.488 0-2.946-.382-4.24-1.107l-.304-.171-3.153.805.823-3.04-.187-.297a8.12 8.12 0 0 1-1.139-4.19c0-4.516 3.682-8.198 8.2-8.198 4.516 0 8.198 3.682 8.198 8.198-.001 4.515-3.682 8.197-8.198 8.197zm4.51-6.191c-.247-.123-1.464-.722-1.691-.803-.226-.082-.391-.123-.556.123-.165.247-.643.803-.789.967-.145.165-.29.185-.537.062-.247-.123-1.045-.385-1.993-1.232-.736-.658-1.232-1.472-1.378-1.719-.146-.247-.015-.38.108-.503.111-.11.247-.29.37-.433.123-.144.164-.247.246-.412.083-.165.042-.309-.019-.433-.062-.123-.556-1.339-.762-1.834-.201-.482-.405-.417-.556-.425-.145-.008-.31-.008-.475-.008s-.433.062-.66.31c-.227.247-.866.845-.866 2.06 0 1.215.886 2.39 1.01 2.555.123.165 1.748 2.668 4.238 3.744 1.837.794 2.516.657 3.013.565.658-.123 1.464-.597 1.67-1.176.206-.576.206-1.069.144-1.173-.061-.101-.226-.163-.473-.287z"/></svg>
+            <span style="font-weight:600;">${waNum}</span>
+          </a>`;
+        }
+
+        tr.innerHTML = `
+        <td>${a.idAgente || ""}</td>
+        <td>${a.nombre || ""}</td>
+        <td>${a.rut || ""}</td>
+        <td>${whatsappHtml}</td>
+        <td>${a.estado || ""}</td>
+        <td>${a.estadoServicio || ""}</td>
+        <td>${a.ultimoServicio || ""}</td>
+        <td>${a.observaciones || ""}</td>
+        <td>${a.ubicacion || ""}</td>
+        <td>${btnLogout}</td>
+      `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("view-title").textContent = "Agentes";
+      document.getElementById("chip-info-vista").innerHTML =
+        `<span class="chip-label">Agentes:</span><span>Disponible (verde lima) / Ocupado (amarillo) / Otros (sin color)</span>`;
+    }
+
+    function renderVistaDashboard() {
+      const kpiContainer = document.getElementById("dashboard-kpis");
+      const vuelosContainer = document.getElementById("dashboard-vuelos");
+      const agDispContainer = document.getElementById("dashboard-agentes-disponibles");
+      if (!kpiContainer || !vuelosContainer || !agDispContainer) return;
+
+      // ---- KPIs ---- 
+      const totalAsistencias = cacheAsignaciones.length;
+
+      const normEstado = (a) => (a.estadoServicio || a.estado || "").trim().toLowerCase();
+      const agentesConectados = cacheAgentes.filter(a => {
+        const e = normEstado(a);
+        return e === "disponible" || e === "en servicio" || e === "en asignacion" || e === "en asignación" || e === "asignado";
+      });
+      const agentesDisponibles = cacheAgentes.filter(a => normEstado(a) === "disponible");
+      const agentesEnServicio = cacheAgentes.filter(a => {
+        const e = normEstado(a);
+        return e === "en servicio" || e === "en asignacion" || e === "en asignación" || e === "asignado";
+      });
+
+      const kpis = [
+        { label: "Total Asistencias", value: totalAsistencias, color: "#6366f1", icon: "📋" },
+        { label: "Agentes Conectados", value: agentesConectados.length, color: "#0ea5e9", icon: "🟢" },
+        { label: "Agentes Disponibles", value: agentesDisponibles.length, color: "#16a34a", icon: "✅" },
+        { label: "Agentes en Servicio", value: agentesEnServicio.length, color: "#eab308", icon: "🔶" }
+      ];
+
+      kpiContainer.innerHTML = kpis.map(k => `
+        <div style="background:linear-gradient(135deg, ${k.color}11, ${k.color}22); border:1px solid ${k.color}44; border-radius:16px; padding:18px 16px; display:flex; flex-direction:column; gap:4px; box-shadow:0 2px 8px ${k.color}15;">
+          <div style="font-size:13px; color:#6b7280; font-weight:700;">${k.icon} ${k.label}</div>
+          <div style="font-size:32px; font-weight:900; color:${k.color};">${k.value}</div>
+        </div>
+      `).join("");
+
+      // ---- Próximos 10 vuelos ----
+      const hoy = hoyTrunc();
+      const manana = addDias(hoy, 1);
+      const ahora = new Date();
+
+      let vuelosProximos = cacheVuelos.filter(v => {
+        const dv = obtenerDateTimeVuelo(v);
+        if (!dv) return false;
+        const f = parseFechaSolo(v.fecha);
+        if (!f) return false;
+        const esHoy = f.getTime() === hoy.getTime();
+        const esManana = f.getTime() === manana.getTime();
+        if (!esHoy && !esManana) return false;
+        // Que el vuelo sea al menos futuro o dentro de los últimos 30 min
+        return dv.getTime() >= (ahora.getTime() - 30 * 60 * 1000);
+      });
+
+      vuelosProximos.sort((a, b) => {
+        const da = obtenerDateTimeVuelo(a);
+        const db = obtenerDateTimeVuelo(b);
+        return (da ? da.getTime() : 9e15) - (db ? db.getTime() : 9e15);
+      });
+
+      vuelosProximos = vuelosProximos.slice(0, 10);
+
+      if (vuelosProximos.length === 0) {
+        vuelosContainer.innerHTML = '<div style="color:#9ca3af;font-size:12px;padding:10px;">No hay vuelos próximos.</div>';
+      } else {
+        vuelosContainer.innerHTML = vuelosProximos.map(v => {
+          const ts = v.tipoServicio || "";
+          const isEmb = ts.toLowerCase() === "embarque";
+          const tsColor = isEmb ? "#dbeafe" : "#fce7f3";
+          const tsTextColor = isEmb ? "#1e40af" : "#be185d";
+          const cantPmr = v.cantPmr || 0;
+          return `
+            <div style="min-width:230px; max-width:260px; border:1px solid #e5e7eb; border-radius:14px; padding:14px; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,0.06); flex-shrink:0; display:flex; flex-direction:column; gap:5px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:11px; padding-bottom:4px; border-bottom:1px solid #f3f4f6;">
+                <span style="font-weight:700; color:#4b5563;">${normalizarFechaExcel(v.fecha) || ""}</span>
+                <span style="background:${tsColor}; color:${tsTextColor}; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px;">${ts}</span>
+              </div>
+              <div style="font-size:15px; font-weight:900; color:#111827;">${v.aerolinea || ""} ${v.numeroVuelo || ""}</div>
+              <div style="font-size:12px; color:#374151;"><b style="color:#6b7280;">Hora:</b> ${formatearHora(v.horaProgramada) || "--"} · <b style="color:#eab308;">Ideal:</b> ${formatearHora(v.horaIdeal) || "--"}</div>
+              <div style="font-size:12px; color:#374151;"><b style="color:#6b7280;">Terminal:</b> ${v.terminal || "--"} · <b>Puerta:</b> ${v.puerta || "--"}</div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:6px; border-top:1px dashed #e5e7eb;">
+                <span style="font-size:13px; font-weight:800;"><span style="color:#dc2626;">${cantPmr}</span> PMR</span>
+                ${cantPmr > 0 ? `<button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" style="background:#1e40af;color:#fff;border:none;padding:4px 10px;font-size:10px;font-weight:800;border-radius:999px;cursor:pointer;">Asignar</button>` : ''}
+              </div>
+            </div>`;
+        }).join("");
+      }
+
+      // ---- Agentes disponibles (listado en vivo) ----
+      if (agentesDisponibles.length === 0) {
+        agDispContainer.innerHTML = '<div style="color:#9ca3af;font-size:12px;padding:10px;">No hay agentes disponibles en este momento.</div>';
+      } else {
+        agDispContainer.innerHTML = agentesDisponibles.map(a => {
+          let cleanNum = String(a.telefono || "").trim().replace(/\D/g, "");
+          let waNum = "";
+          if (cleanNum.startsWith("56") && cleanNum.length >= 10) waNum = "+" + cleanNum;
+          else if (cleanNum.startsWith("9") && cleanNum.length === 9) waNum = "+56" + cleanNum;
+          else if (cleanNum.length === 8) waNum = "+569" + cleanNum;
+          else if (cleanNum.length > 0) waNum = "+56" + cleanNum;
+          const waLink = waNum ? `<a href="https://wa.me/${waNum}" target="_blank" style="text-decoration:none; font-size:14px;" title="Enviar WhatsApp">💬</a>` : '';
+
+          return `
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:12px; padding:10px 14px; min-width:180px; display:flex; flex-direction:column; gap:2px;">
+              <div style="font-weight:800; font-size:13px; color:#166534;">${a.nombre || a.idAgente}</div>
+              <div style="font-size:11px; color:#4b5563;">ID: ${a.idAgente} · ${a.ubicacion || "Sin ubicación"}</div>
+              <div style="font-size:11px; color:#6b7280; display:flex; align-items:center; gap:4px;">${waNum || "Sin teléfono"} ${waLink}</div>
+            </div>`;
+        }).join("");
+      }
+
+      document.getElementById("view-title").textContent = "Dashboard";
+      document.getElementById("chip-info-vista").innerHTML =
+        `<span class="chip-label">Dashboard:</span><span>Resumen operativo en tiempo real</span>`;
+    }
+
+    function renderVistaTimeline() {
+      const container = document.getElementById("timeline-container");
+      const empty = document.getElementById("empty-timeline");
+      container.innerHTML = "";
+
+      const hoy = hoyTrunc();
+      const ahora = new Date();
+      // Calcular límite: la hora exacta hace 1 hora
+      const haceUnaHora = new Date(ahora.getTime() - 60 * 60 * 1000);
+
+      const vuelosFiltrados = cacheVuelos.filter(v => {
+        if (!((v.cantPmr || 0) > 0)) return false;
+        
+        const dv = obtenerDateTimeVuelo(v);
+        if (!dv) return false;
+        
+        // Solo del día actual
+        if (dv.getFullYear() !== hoy.getFullYear() || 
+            dv.getMonth() !== hoy.getMonth() || 
+            dv.getDate() !== hoy.getDate()) {
+            return false;
+        }
+        
+        // Programados desde 1 hora atrás en adelante
+        if (dv.getTime() < haceUnaHora.getTime()) return false;
+
+        return true;
+      });
+
+      if (vuelosFiltrados.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      
+      vuelosFiltrados.sort((a,b) => {
+        const hA = timeOrdenVuelo(a);
+        const hB = timeOrdenVuelo(b);
+        return hA - hB;
+      });
+
+      const groupedByHour = {};
+
+      vuelosFiltrados.forEach(v => {
+        let hFormat = formatearHora(v.horaProgramada);
+        let hourBucket = hFormat ? hFormat.split(":")[0] + ":00" : "S/H";
+        if (!groupedByHour[hourBucket]) groupedByHour[hourBucket] = [];
+        groupedByHour[hourBucket].push(v);
+      });
+
+      Object.keys(groupedByHour).sort().forEach(hour => {
+        const hourSection = document.createElement("div");
+        hourSection.style.cssText = "display:flex; flex-direction:column; gap:10px;";
+        
+        const hourLabel = document.createElement("div");
+        hourLabel.style.cssText = "font-weight:900; font-size:16px; color:#1e40af; border-bottom:2px solid #e5e7eb; padding-bottom:4px;";
+        hourLabel.textContent = hour;
+        hourSection.appendChild(hourLabel);
+
+        const cardRow = document.createElement("div");
+        cardRow.style.cssText = "display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;";
+
+        groupedByHour[hour].forEach(v => {
+           const card = document.createElement("div");
+           card.style.cssText = "min-width:260px; border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:6px; flex-shrink:0;";
+           
+           const ts = v.tipoServicio || "";
+           const isEmb = ts.toLowerCase() === "embarque";
+           const tsColor = isEmb ? "#dbeafe" : "#fce7f3";
+           const tsTextColor = isEmb ? "#1e40af" : "#be185d";
+
+           card.innerHTML = `
+             <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; border-bottom:1px solid #f3f4f6; padding-bottom:4px; margin-bottom:4px;">
+                <span style="font-weight:700; color:#4b5563;">${normalizarFechaExcel(v.fecha) || ""}</span>
+                <span style="background:${tsColor}; color:${tsTextColor}; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px;">${ts}</span>
+             </div>
+             
+             <div style="font-size:16px; font-weight:900; color:#111827;">${v.aerolinea || ""} ${v.numeroVuelo || ""}</div>
+             
+             <div style="font-size:13px; color:#374151; display:flex; align-items:center; gap:8px;">
+               <span><b style="color:#6b7280;">Programada:</b> ${formatearHora(v.horaProgramada) || "--"}</span>
+             </div>
+             <div style="font-size:13px; color:#374151; display:flex; align-items:center; gap:8px;">
+               <span><b style="color:#eab308;">Ideal:</b> ${formatearHora(v.horaIdeal) || "--"}</span>
+             </div>
+
+             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:8px; border-top:1px dashed #e5e7eb;">
+               <div style="font-size:12px; font-weight:700;"><span style="color:#dc2626; font-size:14px;">${v.cantPmr || 0}</span> PMR</div>
+               <button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
+                       style="background:#1e40af; color:#fff; border:none; padding:4px 12px; font-size:11px; font-weight:800; border-radius:999px; cursor:pointer; box-shadow:0 2px 4px rgba(30,64,175,0.3);">
+                  Asignar PMR
+               </button>
+             </div>
+           `;
+           cardRow.appendChild(card);
+        });
+
+        hourSection.appendChild(cardRow);
+        container.appendChild(hourSection);
+      });
+
+      document.getElementById("view-title").textContent = "Timeline";
+      document.getElementById("chip-info-vista").innerHTML =
+        `<span class="chip-label">Timeline:</span><span>Vista cronológica horizontal por hora</span>`;
+    }
+
+    function exportarAgentes(formato) {
+      if (!cacheAgentes || !cacheAgentes.length) {
+        alert("No hay datos de agentes para exportar.");
+        return;
+      }
+      
+      const datos = cacheAgentes.map(a => ({
+        "ID Agente": a.idAgente || "",
+        "Nombre": a.nombre || "",
+        "RUT": a.rut || "",
+        "Teléfono": a.telefono || "",
+        "Estado": a.estado || "",
+        "Estado Servicio": a.estadoServicio || "",
+        "Último Servicio": a.ultimoServicio || "",
+        "Observaciones": a.observaciones || "",
+        "Ubicación": a.ubicacion || ""
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(datos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Agentes");
+      XLSX.writeFile(wb, `Base_Agentes.${formato}`);
+    }
+
+    function llenarComboCrearPmrVuelos() {
+      // IDs posibles si en algún momento vuelves a crear el select
+      const sel =
+        document.getElementById("crear-pmr-vuelo") ||
+        document.getElementById("crear-pasajero-vuelo") ||
+        document.getElementById("select-crear-pmr-vuelo");
+
+      // Si el UI ya no lo tiene, salimos silenciosamente.
+      if (!sel) return;
+
+      const hoy = hoyTrunc();
+      const manana = addDias(hoy, 1);
+
+      const prev = sel.value;
+
+      sel.innerHTML = '<option value="">— Seleccionar —</option>';
+
+      const vuelos = (cacheVuelos || [])
+        .filter(v => {
+          const f = parseFechaSolo(v.fecha);
+          if (!f) return false;
+
+          const esHoy = f.getTime() === hoy.getTime();
+          const esManana = f.getTime() === manana.getTime();
+          if (!esHoy && !esManana) return false;
+
+          // Recomendado: solo futuros (evita poblar con vuelos ya pasados)
+          if (!vueloEsFuturo(v)) return false;
+
+          return true;
+        })
+        .sort((a, b) => timeOrdenVuelo(a) - timeOrdenVuelo(b));
+
+      for (const v of vuelos) {
+        const opt = document.createElement("option");
+        opt.value = String(v.idVuelo || "");
+        opt.textContent =
+          `${v.numeroVuelo || ""} | ${normalizarFechaExcel(v.fecha)} ${formatearHora(v.horaProgramada)} | ${v.terminal || ""}`;
+        sel.appendChild(opt);
+      }
+
+      // Restaurar selección previa si sigue existiendo
+      if (prev) sel.value = prev;
+    }
+
+    function llenarCombosAcciones() {
+      const hoy = hoyTrunc();
+      const manana = addDias(hoy, 1);
+
+      const selMod = document.getElementById("modificar-id-vuelo");
+      selMod.innerHTML = '<option value="">— Seleccionar —</option>';
+      cacheVuelos.forEach(v => {
+        const f = parseFechaSolo(v.fecha);
+        if (!f || f.getTime() !== hoy.getTime()) return;
+        const opt = document.createElement("option");
+        opt.value = v.idVuelo;
+        opt.textContent = `${v.numeroVuelo || ""} | ${normalizarFechaExcel(v.fecha)}`;
+        selMod.appendChild(opt);
+      });
+
+      llenarComboCrearPmrVuelos();
+
+      const selPmr = document.getElementById("asig-select-pmr");
+      selPmr.innerHTML = '<option value="">— Seleccionar PMR —</option>';
+
+      cachePasajeros
+        .filter(p => (p.estadoPmr || "").toLowerCase() === "en espera")
+        .filter(p => {
+          const vuelo = getVueloDePmr(p);
+          if (!vuelo) return false;
+          const f = parseFechaSolo(vuelo.fecha);
+          if (!f) return false;
+          const okDia = (f.getTime() === hoy.getTime() || f.getTime() === manana.getTime());
+          if (!okDia) return false;
+          if (!vueloEsFuturo(vuelo)) return false;
+          return true;
+        })
+        .sort((a, b) => {
+          const va = getVueloDePmr(a);
+          const vb = getVueloDePmr(b);
+          const ta = obtenerDateTimeVuelo(va)?.getTime() || 0;
+          const tb = obtenerDateTimeVuelo(vb)?.getTime() || 0;
+          if (ta !== tb) return ta - tb;
+          return String(a.nombre || "").localeCompare(String(b.nombre || ""));
+        })
+        .forEach(p => {
+          const vuelo = getVueloDePmr(p);
+          const terminal = vuelo ? (vuelo.terminal || "") : "";
+          const key = pmrKey(p);
+          const [num, ymd] = key.includes("||") ? key.split("||") : [key, ""];
+          const opt = document.createElement("option");
+          opt.value = p.idPmr;
+          opt.textContent = `[${p.idPmr}] ${num}${ymd ? (" | " + ymd) : ""} · ${formatearHora(vuelo?.horaProgramada)} · ${p.nombre} · ${terminal || "Sin terminal"}`;
+          selPmr.appendChild(opt);
+        });
+
+      const selAg = document.getElementById("asig-select-agente");
+      selAg.innerHTML = '<option value="">— Selecciona primero un PMR —</option>';
+
+      actualizarPreviewOrigenDestino();
+    }
+
+    function refrescarAgentesParaPmr() {
+      const selPmr = document.getElementById("asig-select-pmr");
+      const selAg = document.getElementById("asig-select-agente");
+      const selTipoTras = document.getElementById("asig-tipo-traslado");
+
+      selAg.innerHTML = "";
+
+      const idPmr = selPmr.value;
+      if (!idPmr) {
+        selAg.innerHTML = '<option value="">— Selecciona primero un PMR —</option>';
+        actualizarPreviewOrigenDestino();
+        return;
+      }
+
+      const pmr = cachePasajeros.find(p => String(p.idPmr) === String(idPmr));
+      if (!pmr) {
+        selAg.innerHTML = '<option value="">No se encontró el PMR seleccionado</option>';
+        actualizarPreviewOrigenDestino();
+        return;
+      }
+
+      const vuelo = getVueloDePmr(pmr);
+      const terminal = vuelo ? (vuelo.terminal || "") : "";
+
+      const sugerido = sugerirTipoTrasladoPorAerolinea(vuelo);
+      if (selTipoTras && !selTipoTras.value && sugerido) selTipoTras.value = sugerido;
+
+      const disponibles = agentesAsignablesEnTerminal(terminal);
+
+      if (!disponibles.length) {
+        selAg.innerHTML = `<option value="">No hay agentes disponibles en ${terminal || "la terminal"}</option>`;
+      } else {
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = `— Agentes asignables en ${terminal || "terminal"} —`;
+        selAg.appendChild(placeholder);
+
+        disponibles.forEach(a => {
+          const opt = document.createElement("option");
+          opt.value = a.idAgente;
+          opt.textContent = `${a.idAgente} · ${a.nombre} · ${prettyEstadoAgente_(a)} · ${a._carga} activos`;
+          selAg.appendChild(opt);
+        });
+      }
+
+      actualizarPreviewOrigenDestino();
+    }
+
+    function actualizarPreviewOrigenDestino() {
+      const inputOrigen = document.getElementById("asig-origen");
+      const inputDestino = document.getElementById("asig-destino");
+      const idPmr = document.getElementById("asig-select-pmr").value;
+      const tipoT = document.getElementById("asig-tipo-traslado").value;
+
+      if (!inputOrigen || !inputDestino) return;
+
+      if (!idPmr || !tipoT) { inputOrigen.value = ""; inputDestino.value = ""; return; }
+
+      const pmr = cachePasajeros.find(p => String(p.idPmr) === String(idPmr));
+      if (!pmr) { inputOrigen.value = ""; inputDestino.value = ""; return; }
+
+      const vuelo = getVueloDePmr(pmr);
+      if (!vuelo) { inputOrigen.value = ""; inputDestino.value = ""; return; }
+
+      const od = calcularOrigenDestinoFront(
+        vuelo.tipoServicio,
+        pmr.tipoAsistencia,
+        tipoT,
+        vuelo.puerta,
+        vuelo.espigon
+      );
+
+      inputOrigen.value = od.origen || "";
+      inputDestino.value = od.destino || "";
+    }
+
+    async function abrirAsignacionDesdePmr(idPmr) {
+      document.querySelectorAll(".action-tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".action-form").forEach(f => f.classList.add("hidden"));
+
+      const tabBtn = document.querySelector('.action-tab-btn[data-target="form-asignar-pmr"]');
+      const form = document.getElementById("form-asignar-pmr");
+      if (tabBtn) tabBtn.classList.add("active");
+      if (form) form.classList.remove("hidden");
+
+      const selPmr = document.getElementById("asig-select-pmr");
+      if (selPmr) {
+        selPmr.value = String(idPmr);
+      }
+
+      const pmr = cachePasajeros.find(p => String(p.idPmr) === String(idPmr));
+      const vuelo = pmr ? getVueloDePmr(pmr) : null;
+
+      const selTipoTras = document.getElementById("asig-tipo-traslado");
+      if (selTipoTras && vuelo) {
+        const sugerido = sugerirTipoTrasladoPorAerolinea(vuelo);
+        if (sugerido) selTipoTras.value = sugerido;
+      }
+
+      const vPmr = getVueloDePmr(pmr);
+      const aerolinea = vPmr ? vPmr.aerolinea : "";
+
+      const selTraslado = document.getElementById("asig-tipo-traslado");
+      if (selTraslado) {
+        selTraslado.value = getTipoTrasladoSugerido(aerolinea);
+      }
+
+      await refrescarAgentesParaPmr();
+
+      const sidebar = document.querySelector(".sidebar");
+      if (sidebar) sidebar.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function accionModificarVuelo() {
+      const msg = document.getElementById("msg-modificar-vuelo");
+      msg.textContent = ""; msg.className = "msg";
+
+      const idVuelo = document.getElementById("modificar-id-vuelo").value;
+      if (!idVuelo) { msg.textContent = "Selecciona un vuelo."; msg.className = "msg err"; return; }
+
+      const nuevaFecha = document.getElementById("modificar-fecha").value;
+      const nuevaHora = document.getElementById("modificar-hora").value;
+      const nuevaPuerta = document.getElementById("modificar-puerta").value.trim();
+      const nuevoEspigon = document.getElementById("modificar-espigon").value.trim();
+
+      if (!nuevaFecha && !nuevaHora && !nuevaPuerta && !nuevoEspigon) {
+        msg.textContent = "No hay cambios para aplicar.";
+        msg.className = "msg err";
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.append("action", "modificarVuelo");
+      params.append("idVuelo", idVuelo);
+      if (nuevaFecha) params.append("nuevaFecha", nuevaFecha);
+      if (nuevaHora) params.append("nuevaHora", nuevaHora);
+
+      if (nuevaPuerta) { params.append("nuevaPuerta", nuevaPuerta); params.append("nuevoPuerta", nuevaPuerta); }
+      if (nuevoEspigon) { params.append("nuevoEspigon", nuevoEspigon); params.append("nuevo_espigon", nuevoEspigon); }
+
+      try {
+        const res = await fetch(API_URL + "?" + params.toString());
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || "Error al modificar vuelo");
+        msg.textContent = "Vuelo modificado correctamente.";
+        msg.className = "msg ok";
+        if (window.notificarUpdate) window.notificarUpdate("vuelos");
+        await cargarDatos();
+      } catch (err) {
+        msg.textContent = "Error al modificar vuelo: " + (err.message || err);
+        msg.className = "msg err";
+      }
+    }
+
+    /* ✅ CARGA MASIVA (DESHABILITADA) -> abre ClientePMR en nueva pestaña */
+    async function accionCargaMasiva() {
+      const msg = document.getElementById("msg-carga-masiva");
+      if (msg) {
+        msg.textContent = "Abriendo Cliente PMR en una nueva pestaña...";
+        msg.className = "msg ok";
+      }
+      window.open(CLIENTE_PMR_URL, "_blank", "noopener,noreferrer");
+    }
+
+    /* ✅ ITINERARIO LATAM (Excel/CSV) -> crea/actualiza vuelos usando action=createVuelo */
+    async function accionItinerarioLatam() {
+      const msg = document.getElementById("msg-itinerario-latam");
+      const input = document.getElementById("input-itinerario-latam");
+      const btn = document.getElementById("btn-itinerario-latam");
+
+      msg.textContent = ""; msg.className = "msg";
+
+      const file = input.files && input.files[0];
+      if (!file) {
+        msg.textContent = "Selecciona un archivo de itinerario (.xlsx / .xls / .csv).";
+        msg.className = "msg err";
+        return;
+      }
+
+      btn.disabled = true;
+      msg.textContent = "Leyendo itinerario...";
+
+      try {
+        const ext = (file.name || "").toLowerCase().split(".").pop();
+        let rows = [];
+
+        if (ext === "csv") {
+          const text = await file.text();
+          rows = parseCSV(text);
+        } else {
+          const ab = await file.arrayBuffer();
+          const data = new Uint8Array(ab);
+          const wb = XLSX.read(data, { type: "array" });
+          const wsName = wb.SheetNames[0];
+          const ws = wb.Sheets[wsName];
+          rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", raw: false });
+        }
+
+        if (!rows || rows.length <= 1) {
+          msg.textContent = "No se encontraron filas de datos en el archivo de itinerario.";
+          msg.className = "msg err";
+          return;
+        }
+
+        const headers = (rows[0] || []).map(h => String(h || "").trim());
+        const hLower = headers.map(h => h.toLowerCase());
+        const pareceHeader =
+          hLower.some(x => x.includes("aerol")) ||
+          hLower.some(x => x.includes("carrier")) ||
+          hLower.some(x => x.includes("vuelo")) ||
+          hLower.some(x => x.includes("ruta")) ||
+          hLower.some(x => x.includes("origen")) ||
+          hLower.some(x => x.includes("destino")) ||
+          hLower.some(x => x.includes("fecha"));
+
+        let idxCodAer = 0, idxNum = 1, idxRuta = 2, idxFechaHora = 3;
+        let idxTipoAvion = -1, idxObs = -1;
+
+        if (pareceHeader) {
+          idxCodAer = getColIndex(headers, ["codigo aerolinea", "código aerolinea", "aerolinea", "aerolínea", "carrier", "airline"]);
+          idxNum = getColIndex(headers, ["numero vuelo", "número vuelo", "n° vuelo", "nro vuelo", "vuelo", "flight"]);
+          idxRuta = getColIndex(headers, ["origen-destino", "origen destino", "ruta", "route", "origin-destination", "origen/destino"]);
+          idxFechaHora = getColIndex(headers, ["fecha hora", "fecha_hora", "fecha y hora", "datetime", "fecha", "date"]);
+
+          idxTipoAvion = getColIndex(headers, ["tipo avion", "tipo avión", "tipo_avion", "aeronave", "aircraft"]);
+          idxObs = getColIndex(headers, ["observaciones", "obs", "observacion", "observación", "comentarios", "comentario"]);
+
+          if (idxCodAer < 0) idxCodAer = 0;
+          if (idxNum < 0) idxNum = 1;
+          if (idxRuta < 0) idxRuta = 2;
+          if (idxFechaHora < 0) idxFechaHora = 3;
+        }
+
+        const dataRows = pareceHeader ? rows.slice(1) : rows.slice(0);
+        const registros = [];
+
+        const normalizarVueloLatam_ = (codigo, numero) => {
+          const numDigits = String(numero || "").replace(/[^0-9]/g, "");
+          if (!numDigits) return "";
+          return "LA" + numDigits;
+        };
+
+        for (const r of dataRows) {
+          const codigoAer = limpiarStr(r[idxCodAer]).toUpperCase();
+          const numeroRaw = limpiarStr(r[idxNum]).toUpperCase();
+          const ruta = limpiarStr(r[idxRuta]);
+          const fechaHoraRaw = r[idxFechaHora];
+
+          if (!numeroRaw && !ruta && !fechaHoraRaw) continue;
+
+          const numeroVuelo = normalizarVueloLatam_(codigoAer, numeroRaw);
+          if (!numeroVuelo) continue;
+
+          const { origen, destino } = splitOrigenDestino_(ruta);
+          const fecha = normalizarFechaExcel(fechaHoraRaw);
+          const hora = normalizarHoraExcel(fechaHoraRaw);
+
+          if (!fecha || !hora) continue;
+
+          const tipoServicio = inferirTipoServicioPorRuta_(origen, destino);
+          const tipoAvion = (idxTipoAvion >= 0) ? limpiarStr(r[idxTipoAvion]) : "";
+          const observaciones = (idxObs >= 0) ? limpiarStr(r[idxObs]) : "";
+
+          registros.push({
+            aerolinea: "LATAM",
+            numeroVuelo,
+            fecha,
+            hora,
+            origen,
+            destino,
+            tipoServicio,
+            tipoAvion,
+            observaciones
+          });
+        }
+
+        if (!registros.length) {
+          msg.textContent = "No se encontraron registros válidos en el itinerario (revisa A–D).";
+          msg.className = "msg err";
+          return;
+        }
+
+        const map = new Map();
+        for (const v of registros) {
+          const key = `${v.numeroVuelo}|${v.fecha}`;
+          if (!map.has(key)) map.set(key, v);
+        }
+        const unicos = Array.from(map.values());
+
+        msg.textContent = `Enviando ${unicos.length} vuelos únicos al servidor...`;
+
+        const chunkSize = 2000;
+        let vuelosCreados = 0;
+        let vuelosActualizados = 0;
+        let saltados = 0;
+
+        for (let inicio = 0; inicio < unicos.length; inicio += chunkSize) {
+          const fin = Math.min(inicio + chunkSize, unicos.length);
+          const chunk = unicos.slice(inicio, fin);
+
+          let intentos = 0;
+          let exito = false;
+
+          while (!exito && intentos < maxRetries) {
+            intentos++;
+            try {
+              msg.textContent =
+                `Procesando vuelos ${inicio + 1} a ${fin} de ${unicos.length} ` +
+                `(intento ${intentos}/${maxRetries})...`;
+
+              // ✅ CAMBIO: Usar POST para evitar límite de URL
+              const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                  action: 'cargaItinerarioLatam',
+                  payload: chunk
+                })
+              });
+              const json = await res.json();
+
+
+              if (!json.ok) throw new Error(json.error || "Error en cargaItinerarioLatam");
+
+              vuelosCreados += json.vuelosCreados || 0;
+              vuelosActualizados += json.vuelosActualizados || 0;
+              saltados += json.saltados || 0;
+
+              exito = true;
+            } catch (err) {
+              console.warn(`Error chunk itinerario ${inicio}-${fin}:`, err);
+              if (intentos >= maxRetries) throw err;
+              await new Promise(r => setTimeout(r, retryBaseDelayMs * intentos));
+            }
+          }
+        }
+
+        msg.textContent =
+          `Itinerario procesado. Nuevos: ${vuelosCreados} | Actualizados: ${vuelosActualizados}` +
+          (saltados ? ` | Saltados: ${saltados}` : "") +
+          `. Recargando panel...`;
+        msg.className = "msg ok";
+
+        if (window.notificarUpdate) window.notificarUpdate("vuelos");
+        await cargarDatos();
+        llenarComboCrearPmrVuelos();
+
+      } catch (error) {
+        console.error(error);
+        msg.textContent = "Error al procesar itinerario: " + (error.message || error);
+        msg.className = "msg err";
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function accionAsignarPmr() {
+      const msg = document.getElementById("msg-asignar-pmr");
+      msg.textContent = ""; msg.className = "msg";
+
+      const idPmr = document.getElementById("asig-select-pmr").value;
+      const idAgente = document.getElementById("asig-select-agente").value;
+      const tipoT = document.getElementById("asig-tipo-traslado").value;
+      const obs = document.getElementById("asig-obs").value.trim();
+
+
+      /* Eliminado validacion de carga maxima
+      const cargaActual = contarAsignacionesActivasAgente_(idAgente);
+      if (cargaActual >= MAX_ASIG_POR_AGENTE) {
+        msg.textContent = `Agente sobrcargado (${MAX_ASIG_POR_AGENTE}/${MAX_ASIG_POR_AGENTE}). Selecciona otro agente.`;
+        msg.className = "msg err";
+        return;
+      }
+      */
+      if (!idPmr) { msg.textContent = "Selecciona un pasajero PMR."; msg.className = "msg err"; return; }
+      if (!idAgente) { msg.textContent = "Selecciona un agente disponible."; msg.className = "msg err"; return; }
+      if (!tipoT) { msg.textContent = "Selecciona un tipo de traslado."; msg.className = "msg err"; return; }
+
+      const params = new URLSearchParams();
+      params.append("action", "asignarPmrAgente");
+      params.append("idPmr", idPmr);
+      params.append("idAgente", idAgente);
+      params.append("tipoTraslado", tipoT);
+      params.append("observaciones", obs);
+
+      params.append("maxAsignaciones", "999");
+      params.append("resetAceptacion", "1");
+      try {
+        const res = await fetch(API_URL + "?" + params.toString());
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || "Error al asignar");
+
+        msg.textContent = "Asignación creada correctamente.";
+        msg.className = "msg ok";
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatos();
+      } catch (err) {
+        msg.textContent = "Error al asignar PMR: " + (err.message || err);
+        msg.className = "msg err";
+      }
+    }
+
+    async function accionForzarLogout(idAgente) {
+      if (!confirm("¿Seguro que deseas desconectar a este agente? Pasará a 'Fuera de turno'.")) return;
+
+      const apiStatus = document.getElementById("api-status");
+      const prevStatus = apiStatus.textContent;
+
+      // Optimistic Update
+      const agente = cacheAgentes.find(a => String(a.idAgente) === String(idAgente));
+      let backupState = null;
+      if (agente) {
+        backupState = { ...agente };
+        agente.estadoServicio = "Fuera de turno";
+        renderVistaAgentes();
+      }
+
+      apiStatus.textContent = "Desconectando...";
+
+      try {
+        const params = new URLSearchParams();
+        params.append("action", "agenteLogout");
+        params.append("idAgente", idAgente);
+
+        // Non-blocking fetch (if we trust it works). But to be safe, we await.
+        // To be even faster, we could not await and just let it run.
+        const res = await fetch(API_URL + "?" + params.toString());
+        const json = await res.json();
+
+        if (!json.ok) throw new Error(json.error || "Error al desconectar agente");
+
+        apiStatus.textContent = "Desconexión OK";
+        setTimeout(() => apiStatus.textContent = prevStatus || "Online", 2000);
+
+        if (window.notificarUpdate) window.notificarUpdate("agentes");
+
+      } catch (err) {
+        console.error(err);
+        alert("Error de sincronización: " + err.message);
+        // Rollback on error
+        if (agente && backupState) {
+          Object.assign(agente, backupState);
+          renderVistaAgentes();
+        }
+        apiStatus.textContent = "Error";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+
+          const vista = btn.dataset.view;
+          document.querySelectorAll(".view-section").forEach(sec => sec.classList.remove("active"));
+          document.getElementById("view-" + vista).classList.add("active");
+
+          renderVistaActual();
+        });
+      });
+
+      document.querySelectorAll(".action-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const target = btn.dataset.target;
+
+          // ✅ CAMBIO: si es "Carga masiva", abrir ClientePMR en nueva pestaña y NO mostrar panel de carga
+          if (target === "form-carga-masiva") {
+            window.open(CLIENTE_PMR_URL, "_blank", "noopener,noreferrer");
+            return;
+          }
+
+          document.querySelectorAll(".action-tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".action-form").forEach(f => f.classList.add("hidden"));
+
+          btn.classList.add("active");
+          const form = document.getElementById(target);
+          if (form) form.classList.remove("hidden");
+        });
+      });
+      document.getElementById("btn-modificar-vuelo").addEventListener("click", accionModificarVuelo);
+
+      // ✅ Se mantiene el botón interno (por si lo abres desde el panel), también abre en nueva pestaña
+      document.getElementById("btn-carga-masiva").addEventListener("click", accionCargaMasiva);
+
+      document.getElementById("btn-itinerario-latam").addEventListener("click", accionItinerarioLatam);
+      document.getElementById("btn-asignar-pmr").addEventListener("click", accionAsignarPmr);
+
+      document.getElementById("asig-select-pmr").addEventListener("change", refrescarAgentesParaPmr);
+      document.getElementById("asig-tipo-traslado").addEventListener("change", actualizarPreviewOrigenDestino);
+
+      document.getElementById("btn-actualizar").addEventListener("click", () => cargarDatos());
+
+      document.getElementById("filtro-vuelo-num").addEventListener("input", renderVistaVuelos);
+      document.getElementById("filtro-aerolinea").addEventListener("input", renderVistaVuelos);
+
+      document.getElementById("filtro-pmr-vuelo").addEventListener("change", renderVistaPmr);
+      document.getElementById("filtro-pmr-estado").addEventListener("change", renderVistaPmr);
+
+      document.getElementById("filtro-asig-vuelo-num").addEventListener("input", renderVistaAsignaciones);
+      document.getElementById("filtro-asig-fecha").addEventListener("change", renderVistaAsignaciones);
+      document.getElementById("filtro-asig-tipo").addEventListener("change", renderVistaAsignaciones);
+      document.getElementById("filtro-asig-estado").addEventListener("change", renderVistaAsignaciones);
+      document.getElementById("filtro-agente-nombre").addEventListener("input", renderVistaAgentes);
+
+      const btnExpXls = document.getElementById("btn-exportar-agentes-xls");
+      const btnExpXlsx = document.getElementById("btn-exportar-agentes-xlsx");
+      const btnEditAgentes = document.getElementById("btn-editar-agentes");
+      if (btnExpXls) btnExpXls.addEventListener("click", () => exportarAgentes("xls"));
+      if (btnExpXlsx) btnExpXlsx.addEventListener("click", () => exportarAgentes("xlsx"));
+      if (btnEditAgentes) btnEditAgentes.addEventListener("click", abrirEditarAgente);
+
+      // ✅ Eventos Selección Masiva
+      const checkAll = document.getElementById("checkbox-select-all-pmr");
+      if (checkAll) {
+        checkAll.addEventListener("change", (e) => selectAllPmrs(e.target.checked));
+      }
+
+      const btnAsigMasivo = document.getElementById("btn-asignar-masivo");
+      if (btnAsigMasivo) {
+        btnAsigMasivo.addEventListener("click", abrirAsignacionMasiva);
+      }
+
+      const btnDeselect = document.getElementById("btn-deseleccionar-todo");
+      if (btnDeselect) {
+        btnDeselect.addEventListener("click", deselectAll);
+      }
+
+      // Delegación de eventos para checkboxes individuales
+      document.addEventListener("change", (e) => {
+        if (e.target.classList.contains("pmr-checkbox")) {
+          const id = e.target.getAttribute("data-idpmr");
+          togglePmrSelection(id, e.target.checked);
+        }
+      });
+
+      cargarDatos();
+    });
+  </script>
+  <!-- FIREBASE INTEGRATION -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDG0Klm9UF8CGVWvUJfBijbVRL9BVTJ7ag",
+      authDomain: "sistemapmraerolinea.firebaseapp.com",
+      projectId: "sistemapmraerolinea",
+      storageBucket: "sistemapmraerolinea.firebasestorage.app",
+      messagingSenderId: "788258832323",
+      appId: "1:788258832323:web:3f74325486d26a5ec74776",
+      measurementId: "G-CX4EJHG81D"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    console.log("Firebase initialized. Listening for updates...");
+
+    // LISTEN for updates
+    const updatesDocRef = doc(db, "meta", "updates");
+
+    // Flag to avoid double refresh on local change
+    // When we write to Firestore, we might get a local snapshot notification immediately or latency compensated.
+    // However, for simplicity, we just reload on any external change.
+
+    onSnapshot(updatesDocRef, (docSnap) => {
+      const source = docSnap.metadata.hasPendingWrites ? "Local" : "Server";
+      const data = docSnap.data();
+
+      if (data) {
+        if (typeof window.cargarDatos === 'function') {
+          const apiStatus = document.getElementById("api-status");
+
+          let typesToLoad = [];
+          // Map event type to data types
+          switch (data.lastType) {
+            case "agentes":
+              typesToLoad = ["agentes"];
+              break;
+            case "vuelos":
+              typesToLoad = ["vuelos"];
+              break;
+            case "pasajeros":
+            case "pmr":
+              typesToLoad = ["pasajeros"];
+              break;
+            case "asignaciones":
+              typesToLoad = ["asignaciones", "agentes"]; // Assignments affect agents availability
+              break;
+            default:
+              typesToLoad = []; // Load all
+              break;
+          }
+
+          const msg = typesToLoad.length > 0 ? typesToLoad.join(", ") : "Todo";
+          if (apiStatus) apiStatus.textContent = `Cambio detectado (${msg})...`;
+
+          console.log("Firebase Update:", data.lastType, "-> Fetching:", typesToLoad);
+
+          window.cargarDatos(true, typesToLoad).then(() => {
+            console.log("Datos refrescados parcialmente.");
+          }).catch(err => console.error(err));
+        }
+      }
+    });
+
+    // Expose function to NOTIFY updates
+    window.notificarUpdate = async (type = "general") => {
+      try {
+        await setDoc(updatesDocRef, {
+          lastType: type,
+          lastBy: "user_client", // TODO: Add auth uid if available
+          ts: serverTimestamp(),
+          nonce: Math.random()
+        });
+        console.log("Señal de update enviada:", type);
+      } catch (e) {
+        console.error("Error al notificar update:", e);
+      }
+    };
+
+
+    // ******************************************************
+    //  ASIGNACIÓN MAESTRO / VUELO
+    // ******************************************************
+    let currentVueloMaestroData = null;
+    let currentPmrsAsignacion = [];
+
+    function abrirModalAsignacionMaestro(vueloNum, fechaVuelo, pmrs, idVuelo) {
+      currentVueloMaestroData = { vueloNum, fechaVuelo, idVuelo };
+      currentPmrsAsignacion = pmrs; // guardamos para enviar IDs
+
+      let existing = document.getElementById("modal-asignacion-maestro");
+      if (existing) existing.remove();
+
+      const terminalComun = pmrs.length > 0 ? (pmrs[0].terminal || '') : '';
+      const agentesDisp = agentesAsignablesEnTerminal(terminalComun);
+
+      // Crear Datalist global para este modal (si no existe)
+      let datalistId = "datalist-agentes-disponibles";
+      let dl = document.getElementById(datalistId);
+      if (!dl) {
+        dl = document.createElement("datalist");
+        dl.id = datalistId;
+        document.body.appendChild(dl);
+      }
+      dl.innerHTML = agentesDisp.map(a =>
+        `<option value="${a.nombre} - ${a.idAgente}" data-id="${a.idAgente}">Carga: ${a._carga || 0}</option>`
+      ).join('');
+
+      const modal = document.createElement("div");
+      modal.id = "modal-asignacion-maestro";
+      modal.style.position = "fixed";
+      modal.style.top = "0";
+      modal.style.left = "0";
+      modal.style.width = "100%";
+      modal.style.height = "100%";
+      modal.style.background = "rgba(0,0,0,0.5)";
+      modal.style.display = "flex";
+      modal.style.justifyContent = "center";
+      modal.style.alignItems = "center";
+      modal.style.zIndex = "9999";
+
+      modal.innerHTML = `
+          <div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:550px;max-height:90vh;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,0.3);font-family:inherit;">
+              <h2 style="margin:0 0 8px 0;color:#1e40af;font-size:18px;">Asignación Vuelo ${vueloNum}</h2>
+              <p style="margin:0 0 16px 0;color:#6b7280;font-size:13px;">
+                  ID Vuelo: <b>${currentVueloMaestroData.idVuelo}</b> | Terminal: <b>${terminalComun || 'N/A'}</b><br>
+                  ${pmrs.length} pasajeros en espera. <br>
+              </p>
+
+              <!-- Sección Maestro -->
+              <div style="margin-bottom:16px;">
+                  <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;color:#1e3a8a;">Agente MAESTRO (Obligatorio)</label>
+                  <input type="text" id="input-maestro" list="${datalistId}" placeholder="Escribe para buscar agente..." 
+                         oninput="validarConflictosAgentes()"
+                         style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;background:#eff6ff;font-weight:bold;">
+              </div>
+
+              <!-- Sección Apoyos Dinámicos -->
+              <div style="margin-bottom:16px;">
+                  <label style="display:block;font-weight:700;margin-bottom:8px;font-size:12px;color:#4b5563;">Agentes de APOYO (Opcional)</label>
+                  <div id="container-apoyos" style="display:flex;flex-direction:column;gap:8px;">
+                      <!-- Filas de apoyo se agregan aquí -->
+                  </div>
+                  <button id="btn-add-apoyo" onclick="agregarFilaApoyo('${datalistId}')" 
+                          style="margin-top:10px;background:none;border:1px dashed #9ca3af;color:#4b5563;border-radius:8px;padding:8px;width:100%;cursor:pointer;font-size:12px;font-weight:bold;">
+                    + Añadir Agente de Apoyo
+                  </button>
+              </div>
+
+              <!-- Tipo Traslado -->
+              <div style="margin-bottom:20px;">
+                <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;">Tipo de Traslado</label>
+                <select id="sel-traslado-maestro" style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;">
+                  <option value="Tramo Completo" ${getTipoTrasladoSugerido(pmrs[0]?.aerolinea || '') === 'Tramo Completo' ? 'selected' : ''}>Tramo Completo</option>
+                  <option value="Ultima Milla" ${getTipoTrasladoSugerido(pmrs[0]?.aerolinea || '') === 'Ultima Milla' ? 'selected' : ''}>Ultima Milla</option>
+                </select>
+              </div>
+
+              <!-- Observaciones (Solo Correo) -->
+              <div style="margin-bottom:16px;">
+                  <label style="display:block;font-weight:700;margin-bottom:4px;font-size:12px;color:#1e3a8a;">Observaciones (Solo se enviarán por correo al maestro)</label>
+                  <textarea id="input-obs-maestro" placeholder="Ej: Puerta 15, Espigón C..." 
+                            style="width:100%;padding:10px;border-radius:10px;border:1px solid #e5e7eb;font-size:13px;min-height:60px;resize:vertical;"></textarea>
+              </div>
+              
+                   </div>
+              </div>
+              
+              <div id="msg-error-asignacion" style="margin-bottom:12px; font-size:12px; font-weight:bold; min-height:16px;"></div>
+
+              <div style="background:#f3f4f6;padding:10px;border-radius:8px;font-size:11px;color:#374151;margin-bottom:20px;">
+                  <b>Pasajeros a asignar:</b>
+                  <div style="max-height:80px;overflow-y:auto;margin-top:4px;">
+                      <ul style="padding-left:14px;margin:0;">
+                          ${pmrs.map(p => `<li>${p.nombre} (${p.tipoAsistencia})</li>`).join('')}
+                      </ul>
+                  </div>
+              </div>
+
+              <div style="display:flex;gap:10px;justify-content:flex-end;">
+                  <button onclick="document.getElementById('modal-asignacion-maestro').remove()" 
+                          style="padding:10px 20px;border-radius:99px;border:1px solid #e5e7eb;background:white;cursor:pointer;">Cancelar</button>
+                  <button onclick="confirmarNewAsignacionMaestro()" 
+                          style="padding:10px 24px;border-radius:99px;border:none;background:#2563eb;color:white;font-weight:bold;cursor:pointer;">Confirmar Asignación</button>
+              </div>
+          </div>
+          `;
+
+      document.body.appendChild(modal);
+      // Foco inicial
+      setTimeout(() => document.getElementById("input-maestro").focus(), 100);
+    }
+    window.abrirModalAsignacionMaestro = abrirModalAsignacionMaestro;
+
+    function agregarFilaApoyo(datalistId) {
+      const container = document.getElementById("container-apoyos");
+      const div = document.createElement("div");
+      div.style.display = "flex";
+      div.style.gap = "6px";
+      div.innerHTML = `
+                <input type="text" class="input-apoyo" list="${datalistId}" placeholder="Buscar apoyo..." 
+                       oninput="validarConflictosAgentes()"
+                       style="flex:1;padding:8px;border-radius:8px;border:1px solid #e5e7eb;font-size:12px;">
+                <button onclick="this.parentElement.remove(); validarConflictosAgentes()" style="border:none;background:#fee2e2;color:#b91c1c;border-radius:8px;padding:0 10px;cursor:pointer;font-weight:bold;">✕</button>
+            `;
+      container.appendChild(div);
+      // Foco al nuevo
+      div.querySelector("input").focus();
+    }
+    window.agregarFilaApoyo = agregarFilaApoyo;
+
+    // Helper para extraer ID del valor del input (Formato: "Nombre - ID")
+    function extraerIdAgenteDeInput(val) {
+      if (!val) return null;
+      // Buscamos patrón " - ID" al final
+      const parts = val.split(" - ");
+      if (parts.length < 2) return null;
+      // Retorna la última parte (ID)
+      return parts[parts.length - 1].trim();
+    }
+
+    function validarConflictosAgentes() {
+      const inputMaestro = document.getElementById('input-maestro').value;
+      const idMaestro = extraerIdAgenteDeInput(inputMaestro);
+
+      const inputsApoyo = document.querySelectorAll('.input-apoyo');
+      const idsApoyos = [];
+      for (let inp of inputsApoyo) {
+        const id = extraerIdAgenteDeInput(inp.value);
+        if (id) idsApoyos.push(id);
+      }
+
+      const msgError = document.getElementById('msg-error-asignacion');
+      const btnConfirmar = document.querySelector('#modal-asignacion-maestro button[onclick^="confirmarNew"]');
+
+      if (!msgError) return;
+
+      let error = "";
+      if (idMaestro && idsApoyos.includes(idMaestro)) {
+        error = "⚠ El Agente Maestro no puede ser también de Apoyo.";
+      } else {
+        const unique = new Set(idsApoyos);
+        if (unique.size !== idsApoyos.length) {
+          error = "⚠ Hay agentes de apoyo duplicados.";
+        }
+      }
+
+      if (error) {
+        msgError.textContent = error;
+        msgError.style.color = "#dc2626";
+        if (btnConfirmar) btnConfirmar.disabled = true;
+      } else {
+        msgError.textContent = "";
+        if (btnConfirmar) btnConfirmar.disabled = false;
+      }
+    }
+    window.validarConflictosAgentes = validarConflictosAgentes;
+
+    async function confirmarNewAsignacionMaestro() {
+      const inputMaestro = document.getElementById('input-maestro').value;
+      const idMaestro = extraerIdAgenteDeInput(inputMaestro);
+
+      const msgError = document.getElementById('msg-error-asignacion');
+      if (msgError) msgError.textContent = '';
+
+      // Recolectar apoyos
+      const inputsApoyo = document.querySelectorAll('.input-apoyo');
+      const idsApoyos = [];
+      for (let inp of inputsApoyo) {
+        const id = extraerIdAgenteDeInput(inp.value);
+        if (id) idsApoyos.push(id);
+      }
+
+      const tipoTraslado = document.getElementById('sel-traslado-maestro').value;
+
+      // Validaciones
+      if (!idMaestro) { alert("Debes seleccionar un Agente Maestro válido de la lista."); return; }
+
+      if (idsApoyos.includes(idMaestro)) {
+        const msg = "Error: El Agente Maestro (" + idMaestro + ") no puede ser también Agente de Apoyo.";
+        if (msgError) {
+          msgError.textContent = msg;
+          msgError.style.color = '#dc2626';
+        }
+        alert(msg);
+        return;
+      }
+
+      // Check duplicados en apoyos
+      const uniqueApoyos = new Set(idsApoyos);
+      if (uniqueApoyos.size !== idsApoyos.length) {
+        const msg = "Error: Hay agentes de apoyo duplicados.";
+        if (msgError) {
+          msgError.textContent = msg;
+          msgError.style.color = '#dc2626';
+        }
+        alert(msg);
+        return;
+      }
+
+      const pmrIds = currentPmrsAsignacion.map(p => p.idPmr);
+      const observacionesMaestro = document.getElementById('input-obs-maestro').value.trim();
+
+      const btn = document.querySelector('#modal-asignacion-maestro button[onclick^="confirmar"]');
+
+      if (btn) btn.disabled = true;
+
+      if (!confirm(`¿Confirmar Asignación?\n\nVuelo: ${currentVueloMaestroData.vueloNum}\nID Vuelo: ${currentVueloMaestroData.idVuelo}\nMaestro: ${idMaestro}\nApoyos: ${idsApoyos.length}\nPasajeros: ${pmrIds.length}`)) {
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      if (btn) {
+        btn.textContent = "Procesando...";
+        btn.disabled = true;
+      }
+
+      try {
+        // ✅ CAMBIO: Usar POST para evitar límites de URL con muchos pasajeros
+        const payload = {
+          action: "asignarVueloMaestro",
+          idVuelo: currentVueloMaestroData.idVuelo,
+          vueloNum: currentVueloMaestroData.vueloNum,
+          fechaVueloKey: currentVueloMaestroData.fechaVuelo,
+          idAgenteMaestro: idMaestro,
+          idsAgentesApoyo: JSON.stringify(idsApoyos),
+          pmrIds: JSON.stringify(pmrIds),
+          tipoTraslado: tipoTraslado,
+          observaciones: observacionesMaestro || ""
+        };
+
+        const res = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+
+        if (!json.ok) throw new Error(json.error || "Error al asignar vuelo");
+
+        alert("Asignación exitosa.\nMaestro: " + idMaestro);
+        document.getElementById('modal-asignacion-maestro').remove();
+
+        if (window.notificarUpdate) window.notificarUpdate('asignaciones');
+        cargarDatos(); // Recargar vista supervisor
+
+      } catch (e) {
+        console.error(e);
+        alert("Error: " + e.message);
+        btn.textContent = "Reintentar";
+        btn.disabled = false;
+      }
+    }
+    window.confirmarNewAsignacionMaestro = confirmarNewAsignacionMaestro;
+
+    // Mantener helper iniciarAsignacionVuelo
+    window.iniciarAsignacionVuelo = function (idVuelo, vueloNum, fechaRaw) {
+      // Filter PMRs "En espera" for this flight 
+      const fkey = normalizarFechaExcel(fechaRaw);
+
+      const pmrs = cachePasajeros.filter(p => {
+        const v = getVueloDePmr(p);
+        return v && String(v.idVuelo) === String(idVuelo)
+          && normalizarFechaExcel(v.fecha) === fkey
+          && normTxt(p.estadoPmr) === "en espera";
+      });
+
+      if (pmrs.length === 0) {
+        alert("No hay pasajeros 'En espera' para asignar en este vuelo.");
+        return;
+      }
+
+      abrirModalAsignacionMaestro(vueloNum, fkey, pmrs, idVuelo);
+    };
+  </script>
+</body>
+
+</html>

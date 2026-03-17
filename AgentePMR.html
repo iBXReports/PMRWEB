@@ -1,0 +1,2896 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Panel Agente PMR</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      color-scheme: light;
+
+      /* Base */
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --surface-2: #f9fafb;
+      --text: #111827;
+      --muted: #6b7280;
+      --muted-2: #9ca3af;
+      --border: #e5e7eb;
+      --border-2: #d1d5db;
+
+      /* Accento (suave) */
+      --accent: #1d4ed8;
+
+      /* Estados */
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --danger: #dc2626;
+
+      /* Sombras */
+      --shadow: 0 10px 30px rgba(0, 0, 0, .08);
+      --shadow-strong: 0 18px 45px rgba(0, 0, 0, .12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f9fafb 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    /* TOPBAR */
+    .topbar {
+      padding: 10px 14px;
+      background: linear-gradient(90deg, #ffffff, #f3f4f6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .08);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .topbar-sub {
+      font-size: 11px;
+      color: var(--muted);
+      opacity: 1;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .topbar-sub .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .topbar-sub .chip.warn {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.12);
+      color: #92400e;
+      font-weight: 800;
+    }
+
+    .topbar-sub .chip .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(29, 78, 216, 0.22);
+    }
+
+    .topbar-sub .chip.warn .dot {
+      background: var(--warn);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.22);
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--border-2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(29, 78, 216, 0.18);
+    }
+
+    .badge-dot.error {
+      background: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+    }
+
+    .container {
+      padding: 12px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--surface);
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: var(--muted);
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--border-2);
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    /* FORM */
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      margin-top: 2px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: rgba(29, 78, 216, 0.55);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      margin-top: 2px;
+      resize: vertical;
+      min-height: 52px;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: rgba(29, 78, 216, 0.55);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    /* BUTTONS (gris/white theme) */
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #111827, #374151);
+      color: #ffffff;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 8px;
+      width: 100%;
+      user-select: none;
+      box-shadow: 0 10px 18px rgba(17, 24, 39, 0.18);
+    }
+
+    .btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      filter: saturate(0.7);
+      box-shadow: none;
+    }
+
+    .btn.secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border-2);
+      width: auto;
+      box-shadow: none;
+    }
+
+    .btn.danger {
+      background: linear-gradient(135deg, #ef4444, #b91c1c);
+      color: #ffffff;
+      box-shadow: 0 10px 18px rgba(185, 28, 28, 0.18);
+    }
+
+    .btn.warning {
+      background: linear-gradient(135deg, #f97316, #f59e0b);
+      color: #111827;
+      box-shadow: 0 10px 18px rgba(245, 158, 11, 0.18);
+    }
+
+    .btn.small {
+      padding: 5px 10px;
+      font-size: 12px;
+      width: auto;
+      margin-top: 0;
+    }
+
+    .msg {
+      font-size: 12px;
+      margin-top: 6px;
+      min-height: 16px;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .msg.err {
+      color: #b91c1c;
+    }
+
+    .msg.ok {
+      color: #166534;
+    }
+
+    .msg.warn {
+      color: #92400e;
+    }
+
+    /* Blur & Lock States */
+    .is-blurred {
+      filter: blur(6px);
+      pointer-events: none;
+      user-select: none;
+      opacity: 0.7;
+      transition: filter 0.3s ease, opacity 0.3s ease;
+    }
+
+    .is-locked {
+      pointer-events: none;
+      opacity: 0.85;
+      filter: grayscale(0.2);
+    }
+
+    .unlocked-container {
+      transition: all 0.3s ease;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 120px;
+      border: none;
+      border-radius: 999px;
+      padding: 6px 8px;
+      font-size: 12px;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border-2);
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      background: #111827;
+      color: #ffffff;
+      border-color: #111827;
+      font-weight: 800;
+      box-shadow: 0 10px 18px rgba(17, 24, 39, 0.14);
+    }
+
+    .section {
+      display: none;
+      margin-top: 6px;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    /* Asignaciones cards */
+    .asignacion-card {
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 10px;
+      margin-bottom: 10px;
+      background: var(--surface-2);
+    }
+
+    .asignacion-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      margin-bottom: 4px;
+      gap: 6px;
+      flex-wrap: wrap;
+      color: var(--text);
+    }
+
+    .asignacion-body {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .asignacion-footer {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .pill-state {
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 11px;
+      border: 1px solid var(--border-2);
+      background: var(--surface);
+      white-space: nowrap;
+      color: var(--text);
+    }
+
+    .pill-asignacion {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.12);
+      color: #92400e;
+    }
+
+    .pill-aceptada {
+      border-color: rgba(29, 78, 216, 0.55);
+      background: rgba(29, 78, 216, 0.10);
+      color: #1d4ed8;
+    }
+
+    .pill-transito {
+      border-color: rgba(22, 163, 74, 0.55);
+      background: rgba(22, 163, 74, 0.10);
+      color: #166534;
+    }
+
+    .pill-terminado {
+      border-color: rgba(107, 114, 128, 0.55);
+      background: rgba(107, 114, 128, 0.10);
+      color: #374151;
+    }
+
+    .warning-limit {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      color: #92400e;
+    }
+
+    .expire-box {
+      margin-top: 6px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      border: 1px solid rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.10);
+      color: #92400e;
+    }
+
+    .expire-box.critical {
+      border-color: rgba(220, 38, 38, 0.60);
+      background: rgba(220, 38, 38, 0.10);
+      color: #991b1b;
+      font-weight: 800;
+    }
+
+    /* Historial */
+    .hist-card {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 8px;
+      margin-bottom: 8px;
+      background: var(--surface);
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    /* Panel refresco */
+    .refresh-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      flex-wrap: wrap;
+    }
+
+    .refresh-countdown {
+      display: none;
+      color: var(--text);
+    }
+
+    .refresh-countdown strong {
+      color: #b45309;
+    }
+
+    /* Loading overlay login */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(2px);
+    }
+
+    .loading-box {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      width: 280px;
+      text-align: center;
+      box-shadow: var(--shadow-strong);
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .loading-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .loading-bar-inner {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #111827, #6b7280, #e5e7eb);
+      transition: width 3s linear;
+    }
+
+    /* Modal descanso */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal {
+      width: min(520px, calc(100vw - 24px));
+      border-radius: 18px;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      background: var(--surface);
+      box-shadow: var(--shadow-strong);
+      overflow: hidden;
+      color: var(--text);
+    }
+
+    .modal-head {
+      padding: 12px 14px;
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(107, 114, 128, 0.10));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title {
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-title .ico {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #92400e;
+      font-weight: 900;
+    }
+
+    .modal-body {
+      padding: 14px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .modal-kpi {
+      margin-top: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      background: rgba(245, 158, 11, 0.10);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modal-kpi b {
+      color: #92400e;
+    }
+
+    .modal-kpi .time {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: #92400e;
+      text-shadow: none;
+    }
+
+    .modal-actions {
+      padding: 12px 14px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .modal-actions .btn {
+      width: auto;
+      margin-top: 0;
+    }
+
+    /* Config */
+    .config-info {
+      font-size: 12px;
+      color: var(--text);
+      margin-bottom: 8px;
+      border-radius: 10px;
+      background: var(--surface);
+      padding: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 11px;
+    }
+
+
+    /* =========================
+       BULK POR VUELO (UI)
+       ========================= */
+    .vuelo-group {
+      background: var(--surface);
+    }
+
+    .vuelo-group.paused {
+      opacity: 0.92;
+      border-color: rgba(245, 158, 11, 0.55);
+      box-shadow: 0 10px 30px rgba(245, 158, 11, 0.10);
+    }
+
+    .vuelo-group.busy {
+      opacity: 0.55;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      cursor: wait;
+      position: relative;
+    }
+
+    .vuelo-group.busy::after {
+      content: "Procesando...";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.8);
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #111827;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+
+    .vuelo-group .group-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      line-height: 1.35;
+    }
+
+    .group-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      align-items: center;
+    }
+
+    .group-actions .btn {
+      width: auto;
+      margin-top: 0;
+    }
+
+    .chk-row {
+      display: flex;
+      gap: 10px;
+      padding: 8px 2px;
+      border-top: 1px dashed var(--border);
+      align-items: flex-start;
+    }
+
+    .chk-row:first-child {
+      border-top: none;
+    }
+
+    .chk-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+    }
+
+    .chk-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .chk-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .chk-sub {
+      margin-top: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .pill-paused {
+      border-color: rgba(245, 158, 11, 0.55);
+      background: rgba(245, 158, 11, 0.12);
+      color: #92400e;
+      font-weight: 900;
+    }
+
+    @media (max-width:600px) {
+      .container {
+        padding: 8px;
+      }
+
+      .card {
+        border-radius: 16px;
+      }
+
+      .topbar {
+        gap: 8px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="topbar-title">
+      <div>Agente PMR</div>
+      <div class="topbar-sub" id="topbar-sub">
+        <span id="topbar-last">Sistema PMR · Última act.: —</span>
+        <span class="chip warn" id="topbar-descanso" style="display:none;">
+          <span class="dot"></span>
+          Descanso: <b id="topbar-descanso-mmss">45:00</b>
+        </span>
+      </div>
+    </div>
+    <div class="badge" id="estado-api-agente">
+      <span class="badge-dot" id="estado-dot"></span>
+      <span id="estado-api-text">Desconectado</span>
+    </div>
+  </div>
+
+  <!-- LOADING LOGIN -->
+  <div class="loading-overlay" id="login-loading">
+    <div class="loading-box">
+      <div id="loading-title">Conectando con el sistema PMR...</div>
+      <div style="font-size:11px;color:#6b7280;margin-top:2px;" id="loading-sub">Validando tus datos y marcando
+        disponibilidad</div>
+      <div class="loading-bar">
+        <div class="loading-bar-inner" id="loading-bar-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DESCANSO -->
+  <div class="modal-overlay" id="descanso-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="descanso-title">
+      <div class="modal-head">
+        <div class="modal-title" id="descanso-title">
+          <span class="ico">⏸</span>
+          Ahora estás en descanso
+        </div>
+        <button class="btn small secondary" id="btn-descanso-close">Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <div id="descanso-text">
+          Tienes <b>45 minutos</b>. Durante este periodo quedas temporalmente <b>No Disponible</b> para nuevas
+          asignaciones.
+        </div>
+
+        <div class="modal-kpi">
+          <div>
+            <div style="font-size:11px;color:#6b7280;">Tiempo restante</div>
+            <div style="margin-top:2px;">
+              <span class="time" id="descanso-mmss">45:00</span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;color:#6b7280;">Vuelves a Disponible</div>
+            <div style="margin-top:2px;font-weight:900;color:#111827;" id="descanso-vuelve-a">—</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;font-size:11px;color:#6b7280;">
+          Al finalizar, el sistema te marcará automáticamente como <b>Disponible</b> y el contador desaparecerá.
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn small" id="btn-descanso-entendido">Entendido</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- CARD LOGIN -->
+    <div class="card" id="card-login">
+      <div class="card-header">
+        <span class="card-title">Ingreso de agente</span>
+        <span class="pill">Sólo personal PMR</span>
+      </div>
+
+      <label>RUT (sin puntos, con guión)
+        <input type="text" id="login-rut" placeholder="Ej: 11111111-8" inputmode="text" autocomplete="off">
+      </label>
+      <div class="hint">
+        Tip: puedes escribirlo con o sin puntos; se normaliza automáticamente.<br>
+        Nota: si en tu hoja tienes RUTs de prueba tipo <span class="mono">258752440-10</span>, acá igual te dejará
+        entrar (sin validar DV estricto).
+      </div>
+
+      <label>Ubicación actual
+        <select id="login-ubicacion">
+          <option value="">-- Seleccionar --</option>
+          <option value="Nacional">Nacional</option>
+          <option value="Internacional">Internacional</option>
+        </select>
+      </label>
+
+      <button class="btn" id="btn-login-agente">Ingresar y marcar Disponible</button>
+      <button class="btn secondary" id="btn-autologin" style="display:none;margin-top:8px;width:100%;">Reingresar con mi
+        última sesión</button>
+
+      <div class="msg" id="msg-login-agente"></div>
+    </div>
+
+    <!-- CARD PRINCIPAL AGENTE -->
+    <div class="card" id="card-main" style="display:none;">
+      <div class="card-header">
+        <div>
+          <div class="card-title" id="titulo-agente">Agente</div>
+          <div id="subtitulo-agente" style="font-size:11px; color:#6b7280; margin-top:2px;"></div>
+        </div>
+        <span class="pill" id="pill-estado-servicio">—</span>
+      </div>
+
+      <!-- Panel refresco -->
+      <div class="refresh-panel">
+        <button class="btn small secondary" id="btn-refrescar-datos">Refrescar información</button>
+        <div class="refresh-countdown" id="refresh-countdown">
+          Auto-actualización en <strong id="refresh-seconds">300</strong> s
+        </div>
+      </div>
+
+      <!-- Tabs (4 acciones principales del agente) -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="tab-asignaciones">Asignaciones</button>
+        <button class="tab-btn" data-tab="tab-historial">Historial</button>
+        <button class="tab-btn" data-tab="tab-rango">Mi rango</button>
+        <button class="tab-btn" data-tab="tab-config">Configuración</button>
+      </div>
+
+      <!-- ASIGNACIONES -->
+      <div class="section active" id="tab-asignaciones">
+        <div id="lista-asignaciones"></div>
+        <div class="msg" id="msg-asignaciones"></div>
+      </div>
+
+      <!-- HISTORIAL -->
+      <div class="section" id="tab-historial">
+        <div id="lista-historial"></div>
+        <div class="msg" id="msg-historial"></div>
+      </div>
+
+      <!-- MI RANGO -->
+      <div class="section" id="tab-rango">
+        <div id="rango-contenedor"></div>
+      </div>
+
+      <!-- CONFIGURACIÓN -->
+      <div class="section" id="tab-config">
+        <div class="config-info" id="config-info"></div>
+
+        <div class="hist-card">
+          <div style="font-weight:900;margin-bottom:6px;">Estado</div>
+          <button class="btn warning" id="btn-descanso">En Descanso</button>
+          <button class="btn danger" id="btn-logout">Cerrar sesión</button>
+          <div class="msg" id="msg-config"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================
+       CONFIG FIJA
+       ========================= */
+    const API_URL = "https://script.google.com/macros/s/AKfycbwFBHpIx-gQrVAvj5Vv-I-l1X3NR9MYbyTV9CtxgKCw7oPeuxIE5qrYx3eZdDoIroTE/exec";
+    const LOGIN_ACTION = "agenteLoginPorRut";
+    const LS_KEY_SESSION = "pmr_agente_session_v2";
+    const LS_KEY_DATA = "pmr_agente_data_v1";
+
+    const DESCANSO_MINUTES = 45;
+    const DESCANSO_MS = DESCANSO_MINUTES * 60 * 1000;
+
+    const topbarLast = document.getElementById("topbar-last");
+    const topbarDescansoChip = document.getElementById("topbar-descanso");
+    const topbarDescansoMmss = document.getElementById("topbar-descanso-mmss");
+
+    function setTopbarInfo({ apiOk, lastUpdate } = {}) {
+      const lu = lastUpdate || "—";
+      if (topbarLast) topbarLast.textContent = `Sistema PMR · Última act.: ${lu}`;
+      setEstadoApi(apiOk ? "Conectado" : "Desconectado", !!apiOk);
+      updateTopbarDescansoChip_(); // 👈 mantiene chip si está en descanso
+    }
+
+    function updateTopbarDescansoChip_() {
+      if (!topbarDescansoChip || !topbarDescansoMmss) return;
+      if (isEnDescanso_() && descansoUntilMs && getDescansoRemainingMs_() > 0) {
+        topbarDescansoChip.style.display = "inline-flex";
+        topbarDescansoMmss.textContent = formatMMSS_(getDescansoRemainingMs_());
+      } else {
+        topbarDescansoChip.style.display = "none";
+      }
+    }
+
+    function showMsg(el, text, type) {
+      if (!el) return;
+      el.textContent = text || "";
+      el.className = "msg" + (type ? (" " + type) : "");
+    }
+
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    async function fetchJson(url, { timeoutMs = 25000, retries = 3 } = {}) {
+      let lastErr = null;
+      for (let attempt = 0; attempt < retries; attempt++) {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort("timeout"), timeoutMs);
+        try {
+          const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+          const ct = res.headers.get("content-type") || "";
+          if (!ct.toLowerCase().includes("application/json")) {
+            const txt = await res.text();
+            throw new Error("Respuesta no-JSON del servidor. Revisa permisos del WebApp o URL. Detalle: " + txt.slice(0, 140));
+          }
+          return await res.json();
+        } catch (err) {
+          lastErr = err;
+          const isTimeout = (err === "timeout" || (err && err.name === "AbortError"));
+          const isNetwork = (err && err.message && /fetch|network|failed/i.test(err.message));
+
+          if (attempt < retries - 1 && (isTimeout || isNetwork)) {
+            const backoff = Math.pow(2, attempt) * 1000;
+            console.warn(`Fetch falló (intento ${attempt + 1}/${retries}). Reintentando en ${backoff}ms...`, err);
+            await sleep(backoff);
+            continue;
+          }
+          throw err;
+        } finally {
+          clearTimeout(t);
+        }
+      }
+      throw lastErr;
+    }
+
+    function normalizarEstado(s) {
+      return (s || "")
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+    function esEstadoCerrado_(estadoAsignacion) {
+      const est = normalizarEstado(estadoAsignacion);
+      return (
+        est.startsWith("termin") ||
+        est.startsWith("rechaz") ||
+        est.includes("cancel") ||
+        est.includes("inactiv") ||
+        est === "baja"
+      );
+    }
+
+    function isEnDescanso_() {
+      return /descanso/i.test(estadoServicioAgente || "");
+    }
+
+    /* =========================
+       RUT UTILITIES (LOOSE)
+       ========================= */
+    function rutLooseNormalize(rut) {
+      let r = (rut || "").toString().replace(/\./g, "").replace(/\s+/g, "").toUpperCase();
+      if (!r.includes("-")) {
+        const m = r.match(/^(\d{1,8})([0-9K])$/);
+        if (m) r = `${m[1]}-${m[2]}`;
+      }
+      return r;
+    }
+    function rutStrictIsValid(rut) {
+      const r = rutLooseNormalize(rut);
+      const m = r.match(/^(\d{1,8})-([0-9K])$/);
+      if (!m) return false;
+      const numStr = m[1];
+      const dv = m[2];
+      let sum = 0, mul = 2;
+      for (let i = numStr.length - 1; i >= 0; i--) {
+        sum += parseInt(numStr[i], 10) * mul;
+        mul = (mul === 7) ? 2 : (mul + 1);
+      }
+      const mod = 11 - (sum % 11);
+      const dvCalc = (mod === 11) ? "0" : (mod === 10) ? "K" : String(mod);
+      return dvCalc === dv;
+    }
+
+    /* =========================
+       STATE
+       ========================= */
+    let idAgenteLogueado = null;
+    let rutAgente = "";
+    let nombreAgente = "";
+    let ubicacionAgente = "";
+    let estadoServicioAgente = "";
+
+    let descansoUntilMs = 0;
+    let descansoTicker = null;
+
+    let cacheAsignaciones = [];
+    let cachePasajeros = [];
+    let cacheVuelos = [];
+    let cacheAgentes = [];
+    /* =========================
+       BULK UI (LOCAL): Selección por vuelo + Pausa UI
+       ========================= */
+    const LS_KEY_BULK_UI = "pmr_agente_bulk_ui_v1";
+    let bulkUi = { selectedByVuelo: {}, pausedVuelos: {} };
+
+    function loadBulkUi_() {
+      try {
+        const raw = localStorage.getItem(LS_KEY_BULK_UI);
+        if (!raw) return;
+        const obj = JSON.parse(raw);
+        if (obj && typeof obj === "object") {
+          bulkUi.selectedByVuelo = (obj.selectedByVuelo && typeof obj.selectedByVuelo === "object") ? obj.selectedByVuelo : {};
+          bulkUi.pausedVuelos = (obj.pausedVuelos && typeof obj.pausedVuelos === "object") ? obj.pausedVuelos : {};
+        }
+      } catch (_) { }
+    }
+
+    function saveBulkUi_() {
+      try { localStorage.setItem(LS_KEY_BULK_UI, JSON.stringify(bulkUi)); } catch (_) { }
+    }
+
+    function vueloKey_(idVuelo) { return String(idVuelo ?? ""); }
+
+    function isVueloPausadoUI_(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      return !!(bulkUi.pausedVuelos && bulkUi.pausedVuelos[k]);
+    }
+
+    function toggleVueloPausadoUI_(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      bulkUi.pausedVuelos = bulkUi.pausedVuelos || {};
+      bulkUi.pausedVuelos[k] = !bulkUi.pausedVuelos[k];
+      saveBulkUi_();
+      renderAsignacionesAgente();
+    }
+
+    function ensureVueloSelection_(idVuelo, asignaciones) {
+      const k = vueloKey_(idVuelo);
+      bulkUi.selectedByVuelo = bulkUi.selectedByVuelo || {};
+      const map = (bulkUi.selectedByVuelo[k] && typeof bulkUi.selectedByVuelo[k] === "object") ? bulkUi.selectedByVuelo[k] : {};
+
+      // Default: todo seleccionado (solo si no existe decisión previa)
+      (asignaciones || []).forEach(a => {
+        const idA = String(a?.idAsignacion ?? "");
+        if (!idA) return;
+        if (map[idA] === undefined) map[idA] = false;
+      });
+
+      bulkUi.selectedByVuelo[k] = map;
+      saveBulkUi_();
+      return map;
+    }
+
+    function setSeleccionAsig_(idVuelo, idAsignacion, checked) {
+      const k = vueloKey_(idVuelo);
+      const idA = String(idAsignacion ?? "");
+      if (!idA) return;
+
+      bulkUi.selectedByVuelo = bulkUi.selectedByVuelo || {};
+      const map = (bulkUi.selectedByVuelo[k] && typeof bulkUi.selectedByVuelo[k] === "object") ? bulkUi.selectedByVuelo[k] : {};
+      map[idA] = !!checked;
+      bulkUi.selectedByVuelo[k] = map;
+      saveBulkUi_();
+    }
+
+    function getSelectedIdsVuelo_(idVuelo, asignaciones) {
+      const map = ensureVueloSelection_(idVuelo, asignaciones);
+      const out = new Set();
+      (asignaciones || []).forEach(a => {
+        const idA = String(a?.idAsignacion ?? "");
+        if (!idA) return;
+        if (map[idA] !== false) out.add(idA);
+      });
+      return out;
+    }
+
+    function isPendienteAceptar_(estadoN) { return (estadoN === "en asignacion" || estadoN === "en espera"); }
+    function isAceptada_(estadoN) { return (estadoN === "aceptada"); }
+    function isEnTransito_(estadoN) { return (estadoN === "en transito"); }
+
+    function computeExpiryVuelo_(asigsPendAceptar) {
+      const list = (asigsPendAceptar || []).slice();
+      if (!list.length) return null;
+
+      // 1) Si backend entrega horaExpiracion, preferimos la más lejana.
+      let maxExp = null;
+      for (const a of list) {
+        if (a && a.fechaAsignacion && a.horaExpiracion) {
+          const dt = parseHoraToDate(a.fechaAsignacion, a.horaExpiracion);
+          if (dt && (!maxExp || dt.getTime() > maxExp.getTime())) maxExp = dt;
+        }
+      }
+      if (maxExp) return maxExp;
+
+      // 2) Si no, tomamos la última horaAsignacion del vuelo y sumamos 7 min (reinicio local por vuelo)
+      let maxAssign = null;
+      for (const a of list) {
+        const dt = parseHoraToDate(a?.fechaAsignacion, a?.horaAsignacion);
+        if (dt && (!maxAssign || dt.getTime() > maxAssign.getTime())) maxAssign = dt;
+      }
+      if (!maxAssign) return null;
+      const exp = new Date(maxAssign.getTime());
+      exp.setMinutes(exp.getMinutes() + 7);
+      return exp;
+    }
+
+    function msgOpsVuelo_(idVuelo) {
+      return document.getElementById(`msg-ops-vuelo-${vueloKey_(idVuelo)}`);
+    }
+
+    function setBusyVuelo_(idVuelo, busy) {
+      const k = vueloKey_(idVuelo);
+
+      // Bloqueo de botones
+      const ids = [
+        `btn-accept-vuelo-${k}`,
+        `btn-start-vuelo-${k}`,
+        `btn-finish-vuelo-${k}`,
+        `btn-pause-vuelo-${k}`
+      ];
+      ids.forEach(id => {
+        const b = document.getElementById(id);
+        if (b) b.disabled = !!busy;
+      });
+
+      // Bloqueo visual de la tarjeta
+      const card = document.getElementById(`msg-ops-vuelo-${k}`)?.closest(".vuelo-group");
+      if (card) {
+        if (busy) card.classList.add("busy");
+        else card.classList.remove("busy");
+      }
+    }
+
+    function getPendientesVuelo_(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const propias = cacheAsignaciones.filter(a => String(a.idAgente) === String(idAgenteLogueado));
+      return propias.filter(a => String(a.idVuelo) === k && !esEstadoCerrado_(a.estadoAsignacion));
+    }
+
+    async function accionAceptarVueloTodos_(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const el = msgOpsVuelo_(k);
+
+      const asigs = getPendientesVuelo_(k);
+      const toAccept = asigs.filter(a => isPendienteAceptar_(normalizarEstado(a.estadoAsignacion)));
+
+      if (!toAccept.length) {
+        showMsg(el, "No hay asignaciones pendientes de aceptación en este vuelo.", "warn");
+        return;
+      }
+
+      const vuelo = cacheVuelos.find(v => String(v.idVuelo) === k);
+      const vueloNum = vuelo ? (vuelo.numeroVuelo || k) : k;
+
+      if (!confirm(`¿Aceptar TODAS las asignaciones pendientes de este vuelo?
+
+Vuelo: ${vueloNum}
+Pendientes: ${toAccept.length}`)) return;
+
+      setBusyVuelo_(k, true);
+      showMsg(el, "Aceptando asignaciones...", "");
+      let okCount = 0, failCount = 0;
+
+      try {
+        for (const a of toAccept) {
+          try {
+            const url = buildUrl("agenteAceptarAsignacion", { idAsignacion: a.idAsignacion, idAgente: idAgenteLogueado });
+            const json = await fetchJson(url, { timeoutMs: 20000 });
+            if (!json.ok) throw new Error(json.error || "Error");
+
+            // Optimistic update
+            a.estadoAsignacion = 'Aceptada';
+            const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+            if (pmr) pmr.estado = 'Asignado';
+
+            okCount++;
+          } catch (e) {
+            console.error(e);
+            failCount++;
+          }
+        }
+        renderAsignacionesAgente();
+        showMsg(el, `Aceptación finalizada. OK: ${okCount} · Error: ${failCount}`, failCount ? "warn" : "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } finally {
+        setBusyVuelo_(k, false);
+      }
+    }
+
+    async function accionIniciarVueloSeleccionados_(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const el = msgOpsVuelo_(k);
+
+      if (isVueloPausadoUI_(k)) {
+        showMsg(el, "Este vuelo está en Pausa (UI). Reanuda para iniciar.", "warn");
+        return;
+      }
+
+      const asigs = getPendientesVuelo_(k);
+      const selected = getSelectedIdsVuelo_(k, asigs);
+      const toStart = asigs.filter(a => selected.has(String(a.idAsignacion)) && isAceptada_(normalizarEstado(a.estadoAsignacion)));
+
+      if (!toStart.length) {
+        showMsg(el, "No hay asignaciones en estado 'Aceptada' seleccionadas para iniciar.", "warn");
+        return;
+      }
+
+      const vuelo = cacheVuelos.find(v => String(v.idVuelo) === k);
+      const vueloNum = vuelo ? (vuelo.numeroVuelo || k) : k;
+
+      if (!confirm(`¿Iniciar trayecto para los seleccionados?
+
+Vuelo: ${vueloNum}
+Seleccionados a iniciar: ${toStart.length}`)) return;
+
+      setBusyVuelo_(k, true);
+      showMsg(el, "Iniciando trayectos...", "");
+      let okCount = 0, failCount = 0;
+
+      try {
+        for (const a of toStart) {
+          try {
+            const url = buildUrl("agenteIniciarTrayecto", { idAsignacion: a.idAsignacion, idAgente: idAgenteLogueado });
+            const json = await fetchJson(url, { timeoutMs: 20000 });
+            if (!json.ok) throw new Error(json.error || "Error");
+
+            // Optimistic update
+            a.estadoAsignacion = 'En tránsito';
+
+            okCount++;
+          } catch (e) {
+            console.error(e);
+            failCount++;
+          }
+        }
+        renderAsignacionesAgente();
+        showMsg(el, `Inicio finalizada. OK: ${okCount} · Error: ${failCount}`, failCount ? "warn" : "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } finally {
+        setBusyVuelo_(k, false);
+      }
+    }
+
+    async function accionTerminarVueloSeleccionados_(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const el = msgOpsVuelo_(k);
+
+      if (isVueloPausadoUI_(k)) {
+        showMsg(el, "Este vuelo está en Pausa (UI). Reanuda para terminar.", "warn");
+        return;
+      }
+
+      const asigs = getPendientesVuelo_(k);
+      const selected = getSelectedIdsVuelo_(k, asigs);
+
+      const toFinish = asigs.filter(a => selected.has(String(a.idAsignacion)) && isEnTransito_(normalizarEstado(a.estadoAsignacion)));
+      const notSelected = asigs.filter(a => !selected.has(String(a.idAsignacion)));
+
+      if (!toFinish.length) {
+        showMsg(el, "No hay asignaciones 'En tránsito' seleccionadas para terminar.", "warn");
+        return;
+      }
+
+      // Auto-cancel: NO seleccionados que estén Aceptada o En tránsito
+      const toAutoCancel = notSelected.filter(a => {
+        const est = normalizarEstado(a.estadoAsignacion);
+        return isAceptada_(est) || isEnTransito_(est);
+      });
+
+      const vuelo = cacheVuelos.find(v => String(v.idVuelo) === k);
+      const vueloNum = vuelo ? (vuelo.numeroVuelo || k) : k;
+
+      const msgConfirm =
+        `¿Terminar trayecto para los seleccionados?
+
+` +
+        `Vuelo: ${vueloNum}
+` +
+        `A terminar: ${toFinish.length}` +
+        (toAutoCancel.length ? `
+
+Además, se cancelarán automáticamente los NO seleccionados (no conectados): ${toAutoCancel.length}` : "");
+
+      if (!confirm(msgConfirm)) return;
+
+      setBusyVuelo_(k, true);
+      showMsg(el, "Procesando cierre masivo...", "");
+      let okFinish = 0, failFinish = 0, okCancel = 0, failCancel = 0;
+
+      try {
+        // 1) Terminar seleccionados (en tránsito)
+        for (const a of toFinish) {
+          try {
+            const url = buildUrl("agenteTerminarTrayecto", { idAsignacion: a.idAsignacion, idAgente: idAgenteLogueado });
+            const json = await fetchJson(url, { timeoutMs: 20000 });
+            if (!json.ok) throw new Error(json.error || "Error");
+
+            // Optimistic update
+            a.estadoAsignacion = 'Terminado';
+            const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+            if (pmr) pmr.estado = 'Terminado';
+
+            okFinish++;
+          } catch (e) {
+            console.error(e);
+            failFinish++;
+          }
+        }
+
+        // 2) Cancelar NO seleccionados (aceptada/en tránsito) con motivo automático
+        if (toAutoCancel.length) {
+          const motivo = "No conectado (no seleccionado en cierre masivo)";
+          for (const a of toAutoCancel) {
+            try {
+              const url = buildUrl("agenteCancelarAsignacion", { idAsignacion: a.idAsignacion, idAgente: idAgenteLogueado, motivo });
+              const json = await fetchJson(url, { timeoutMs: 20000 });
+              if (!json.ok) throw new Error(json.error || "Error");
+
+              // Optimistic update
+              a.estadoAsignacion = 'Cancelada';
+              const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+              if (pmr) pmr.estado = 'En espera';
+
+              okCancel++;
+            } catch (e) {
+              console.error(e);
+              failCancel++;
+            }
+          }
+        }
+        renderAsignacionesAgente();
+        renderHistorialAgente();
+
+        const tail =
+          `Término OK: ${okFinish} · Error: ${failFinish}` +
+          (toAutoCancel.length ? `
+Auto-cancel OK: ${okCancel} · Error: ${failCancel}` : "");
+
+        showMsg(el, tail, (failFinish || failCancel) ? "warn" : "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } finally {
+        setBusyVuelo_(k, false);
+      }
+    }
+
+
+    let autoRefreshInterval = null;
+    let autoRefreshSeconds = 300;
+    let expireTicker = null;
+
+    const estadoApiBadge = document.getElementById("estado-api-agente");
+    const estadoDot = document.getElementById("estado-dot");
+    const estadoApiText = document.getElementById("estado-api-text");
+
+    function setEstadoApi(texto, ok = true) {
+      if (!estadoApiBadge) return;
+      estadoApiText.textContent = texto;
+      if (estadoDot) {
+        if (ok) estadoDot.classList.remove("error");
+        else estadoDot.classList.add("error");
+      }
+    }
+
+    function formatearHora(horaRaw) {
+      if (!horaRaw) return "";
+      if (horaRaw instanceof Date) {
+        const hh = String(horaRaw.getHours()).padStart(2, "0");
+        const mm = String(horaRaw.getMinutes()).padStart(2, "0");
+        return `${hh}:${mm}`;
+      }
+      const s = String(horaRaw);
+      const m = s.match(/(\d{1,2}):(\d{2})/);
+      if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
+      return s;
+    }
+
+    function parseFechaSolo(fecha) {
+      if (!fecha) return null;
+      if (fecha instanceof Date) return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+      const s = String(fecha).trim();
+      if (s.includes("T")) {
+        const only = s.split("T")[0];
+        const mIso = only.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (mIso) return new Date(parseInt(mIso[1], 10), parseInt(mIso[2], 10) - 1, parseInt(mIso[3], 10));
+      }
+      let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+      m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (m) return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+      const d = new Date(s);
+      if (!isNaN(d)) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      return null;
+    }
+
+    function mostrarLoadingLogin(mostrar, title, sub) {
+      const overlay = document.getElementById("login-loading");
+      const bar = document.getElementById("loading-bar-inner");
+      const t = document.getElementById("loading-title");
+      const s = document.getElementById("loading-sub");
+      if (!overlay || !bar) return;
+      if (t && title) t.textContent = title;
+      if (s && sub !== undefined) s.textContent = sub;
+
+      if (mostrar) {
+        bar.style.width = "0%";
+        overlay.style.display = "flex";
+        void bar.offsetWidth;
+        bar.style.width = "100%";
+      } else {
+        overlay.style.display = "none";
+      }
+    }
+
+    /* =========================
+       MODAL DESCANSO
+       ========================= */
+    function showDescansoModal_() {
+      const overlay = document.getElementById("descanso-modal");
+      if (!overlay) return;
+      overlay.style.display = "flex";
+      updateDescansoModal_();
+    }
+    function hideDescansoModal_() {
+      const overlay = document.getElementById("descanso-modal");
+      if (!overlay) return;
+      overlay.style.display = "none";
+    }
+    function updateDescansoModal_() {
+      const mmss = document.getElementById("descanso-mmss");
+      const vuelve = document.getElementById("descanso-vuelve-a");
+      if (mmss) mmss.textContent = formatMMSS_(getDescansoRemainingMs_());
+      if (vuelve && descansoUntilMs) {
+        const dt = new Date(descansoUntilMs);
+        vuelve.textContent = dt.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+      }
+    }
+
+    function persistSession() {
+      try {
+        const payload = {
+          idAgenteLogueado,
+          rutAgente,
+          nombreAgente,
+          ubicacionAgente,
+          estadoServicioAgente,
+          descansoUntilMs,
+          ts: Date.now()
+        };
+        localStorage.setItem(LS_KEY_SESSION, JSON.stringify(payload));
+      } catch (_) { }
+    }
+    function clearSession() {
+      try {
+        localStorage.removeItem(LS_KEY_SESSION);
+        localStorage.removeItem(LS_KEY_DATA);
+      } catch (_) { }
+    }
+    function getSession() {
+      try {
+        const raw = localStorage.getItem(LS_KEY_SESSION);
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    /* ✅ PERSISTENCIA DE DATOS (Vuelos/Asignaciones) */
+    function saveLocalData() {
+      try {
+        const payload = {
+          asignaciones: cacheAsignaciones,
+          pasajeros: cachePasajeros,
+          vuelos: cacheVuelos,
+          agentes: cacheAgentes,
+          ts: Date.now()
+        };
+        localStorage.setItem(LS_KEY_DATA, JSON.stringify(payload));
+      } catch (_) { }
+    }
+    function loadLocalData() {
+      try {
+        const raw = localStorage.getItem(LS_KEY_DATA);
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        // Expiramos si tiene más de 12 horas para asegurar frescura razonable
+        if (data && data.ts && (Date.now() - data.ts < 12 * 3600 * 1000)) {
+          cacheAsignaciones = data.asignaciones || [];
+          cachePasajeros = data.pasajeros || [];
+          cacheVuelos = data.vuelos || [];
+          cacheAgentes = data.agentes || [];
+          return true;
+        }
+      } catch (_) { }
+      return false;
+    }
+
+    function getDescansoRemainingMs_() {
+      return Math.max(0, (descansoUntilMs || 0) - Date.now());
+    }
+    function formatMMSS_(ms) {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    async function finalizarDescanso_({ silent = false } = {}) {
+      // Para marcar disponible, re-usamos tu login endpoint (que ya marca Disponible)
+      if (!rutAgente || !ubicacionAgente) return;
+
+      try {
+        const url = buildUrl(LOGIN_ACTION, { rut: rutAgente, ubicacion: ubicacionAgente });
+        const json = await fetchJson(url, { timeoutMs: 20000 });
+        if (!json.ok) throw new Error(json.error || "No se pudo reactivar disponibilidad");
+
+        estadoServicioAgente = json.estadoServicio || "Disponible";
+        descansoUntilMs = 0;
+        stopDescansoTicker_();
+        hideDescansoModal_();
+
+        renderConfigInfo();
+        updatePillEstado();
+        persistSession();
+
+        await cargarDatosAgente(false);
+
+        const msgConfig = document.getElementById("msg-config");
+        if (!silent) showMsg(msgConfig, "Colación terminada. Vuelves a 'Disponible'.", "ok");
+      } catch (err) {
+        console.error(err);
+        const msgConfig = document.getElementById("msg-config");
+        if (!silent) showMsg(msgConfig, "Error al reactivar disponibilidad: " + (err.message || err), "err");
+      }
+    }
+
+    function startDescansoTicker_() {
+      stopDescansoTicker_();
+      descansoTicker = setInterval(async () => {
+        const rem = getDescansoRemainingMs_();
+        if (rem <= 0) {
+          stopDescansoTicker_();
+          await finalizarDescanso_({ silent: true });
+          return;
+        }
+        updatePillEstado();
+        renderConfigInfo();
+        updateTopbarDescansoChip_();
+        updateDescansoModal_();
+        persistSession();
+      }, 1000);
+    }
+    function stopDescansoTicker_() {
+      if (descansoTicker) clearInterval(descansoTicker);
+      descansoTicker = null;
+    }
+
+    /* ✅ AJUSTE PARA TEMA CLARO */
+    function updatePillEstado() {
+      const pill = document.getElementById("pill-estado-servicio");
+      if (!pill) return;
+
+      const enDescanso = (isEnDescanso_() && descansoUntilMs && getDescansoRemainingMs_() > 0);
+
+      if (enDescanso) {
+        pill.textContent = `En descanso (${formatMMSS_(getDescansoRemainingMs_())})`;
+        pill.style.borderColor = "rgba(245,158,11,0.55)";
+        pill.style.color = "#92400e";
+        pill.style.background = "rgba(245,158,11,0.12)";
+      } else {
+        pill.textContent = estadoServicioAgente || "—";
+        pill.style.borderColor = "rgba(29,78,216,0.45)";
+        pill.style.color = "#1d4ed8";
+        pill.style.background = "rgba(29,78,216,0.10)";
+      }
+
+      updateTopbarDescansoChip_();
+    }
+
+    /* =========================
+       API BUILDERS
+       ========================= */
+    function buildUrl(action, params = {}) {
+      const usp = new URLSearchParams();
+      usp.append("action", action);
+      for (const [k, v] of Object.entries(params || {})) {
+        if (v !== undefined && v !== null && String(v) !== "") usp.append(k, v);
+      }
+      return API_URL + "?" + usp.toString();
+    }
+
+    /* =========================
+       EXPIRACIÓN 7 MIN (aceptación)
+       ========================= */
+    function construirVence7Min(fechaAsignacion, horaAsignacion) {
+      if (!fechaAsignacion || !horaAsignacion) return null;
+      const fa = parseFechaSolo(fechaAsignacion);
+      if (!fa) return null;
+      const hs = formatearHora(horaAsignacion);
+      const m = String(hs).match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      const h = parseInt(m[1], 10);
+      const mi = parseInt(m[2], 10);
+      const dt = new Date(fa.getFullYear(), fa.getMonth(), fa.getDate(), h, mi, 0, 0);
+      if (isNaN(dt.getTime())) return null;
+      dt.setMinutes(dt.getMinutes() + 7);
+      return dt;
+    }
+    function parseHoraToDate(fechaAsignacion, hora) {
+      const fa = parseFechaSolo(fechaAsignacion);
+      if (!fa) return null;
+      const hs = formatearHora(hora);
+      const m = String(hs).match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      return new Date(fa.getFullYear(), fa.getMonth(), fa.getDate(), parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
+    }
+    function getExpiryDate(asig) {
+      if (asig && asig.fechaAsignacion && asig.horaExpiracion) {
+        const dt = parseHoraToDate(asig.fechaAsignacion, asig.horaExpiracion);
+        if (dt) return dt;
+      }
+      return construirVence7Min(asig?.fechaAsignacion, asig?.horaAsignacion);
+    }
+    function fmtMmSs(ms) {
+      const s = Math.max(0, Math.floor(ms / 1000));
+      const mm = String(Math.floor(s / 60)).padStart(2, "0");
+      const ss = String(s % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    function startExpireTicker() {
+      stopExpireTicker();
+      expireTicker = setInterval(() => {
+        document.querySelectorAll("[data-expire-at]").forEach(el => {
+          const ts = parseInt(el.getAttribute("data-expire-at"), 10);
+          if (!ts || Number.isNaN(ts)) return;
+          const now = Date.now();
+          const left = ts - now;
+
+          const box = el.closest(".expire-box");
+          if (box) {
+            if (left <= 60000) box.classList.add("critical");
+            else box.classList.remove("critical");
+          }
+
+          el.textContent = (left <= 0) ? "00:00" : fmtMmSs(left);
+        });
+      }, 1000);
+    }
+    function stopExpireTicker() {
+      if (expireTicker) {
+        clearInterval(expireTicker);
+        expireTicker = null;
+      }
+    }
+
+    /* =========================
+       LOGIN
+       ========================= */
+    async function intentarLogin({ silent = false } = {}) {
+      const inputRut = document.getElementById("login-rut");
+      const selUbic = document.getElementById("login-ubicacion");
+      const msg = document.getElementById("msg-login-agente");
+      const cardLogin = document.getElementById("card-login");
+      const cardMain = document.getElementById("card-main");
+      const titulo = document.getElementById("titulo-agente");
+      const subtitulo = document.getElementById("subtitulo-agente");
+
+      if (!inputRut || !selUbic || !cardLogin || !cardMain) return;
+
+      const rutTyped = (inputRut.value || "").trim();
+      const rut = rutLooseNormalize(rutTyped);
+      const ubic = selUbic.value;
+
+      if (!rut) { showMsg(msg, "Ingresa tu RUT.", "err"); return; }
+      if (!ubic) { showMsg(msg, "Selecciona tu ubicación actual.", "err"); return; }
+
+      const dvNormal = /^(\d{1,8})-([0-9K])$/.test(rut);
+      if (dvNormal && !rutStrictIsValid(rut)) {
+        showMsg(msg, "⚠️ Ojo: el DV no coincide. Igual intentaré iniciar sesión (por si tu hoja tiene RUTs de prueba).", "warn");
+      } else {
+        showMsg(msg, "", "");
+      }
+
+      inputRut.value = rut;
+
+      const btn = document.getElementById("btn-login-agente");
+      if (btn) btn.disabled = true;
+
+      try {
+        if (!silent) mostrarLoadingLogin(true, "Conectando con el sistema PMR...", "Validando tus datos y marcando disponibilidad");
+
+        const url = buildUrl(LOGIN_ACTION, { rut, ubicacion: ubic });
+        const json = await fetchJson(url, { timeoutMs: 20000 });
+
+        if (!json.ok) throw new Error((json.error || "Error al iniciar sesión").toString());
+
+        idAgenteLogueado = json.idAgente;
+        rutAgente = rut;
+        nombreAgente = json.nombre || ("Agente " + (json.idAgente || ""));
+        ubicacionAgente = json.ubicacion || ubic;
+        estadoServicioAgente = json.estadoServicio || "Disponible";
+
+        // 👇 si backend entrega descansoHasta, lo usamos (mejor)
+        if (json.descansoHasta) {
+          const t = new Date(json.descansoHasta).getTime();
+          descansoUntilMs = isNaN(t) ? 0 : t;
+        } else {
+          if (isEnDescanso_() && (!descansoUntilMs || descansoUntilMs < Date.now())) {
+            descansoUntilMs = Date.now() + DESCANSO_MS;
+          }
+        }
+
+        const cardLoginEl = document.getElementById("card-login");
+        const cardMainEl = document.getElementById("card-main");
+        cardLoginEl.style.display = "none";
+        cardMainEl.style.display = "block";
+        if (titulo) titulo.textContent = nombreAgente;
+        if (subtitulo) subtitulo.textContent = `ID: ${idAgenteLogueado} · RUT: ${rutAgente} · Ubicación: ${ubicacionAgente}`;
+
+        updatePillEstado();
+
+        if (isEnDescanso_() && descansoUntilMs && getDescansoRemainingMs_() > 0) startDescansoTicker_();
+        else stopDescansoTicker_();
+
+        setEstadoApi("Conectado", true);
+        setTopbarInfo({ apiOk: true, lastUpdate: new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) });
+
+        iniciarAutoRefresh();
+
+        // Restaurar flujo Feb 13: Carga de datos estándar tras login
+        await sleep(900); // Re-añadir delay para "vibe" estable de la sesión anterior
+        await cargarDatosAgente(true);
+        startExpireTicker();
+      } catch (err) {
+        console.error(err);
+        setEstadoApi("Error conexión", false);
+        setTopbarInfo({ apiOk: false });
+
+        const msgText = (err && err.message) ? err.message : String(err);
+
+        if (/no-JSON/i.test(msgText) || /Respuesta no-JSON/i.test(msgText)) {
+          showMsg(msg,
+            "La API respondió algo distinto a JSON (posible URL incorrecta o permisos del WebApp).\n" +
+            "Revisa el despliegue del WebApp: acceso “Cualquiera” y ejecuta como propietario.",
+            "err"
+          );
+        } else if (/timeout/i.test(msgText)) {
+          showMsg(msg, "Tiempo de espera agotado. Reintenta (posible conexión lenta).", "err");
+        } else {
+          showMsg(msg, "Error al iniciar sesión: " + msgText, "err");
+        }
+      } finally {
+        if (!silent) mostrarLoadingLogin(false);
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    async function autologin() {
+      const s = getSession();
+      if (!s || !s.rutAgente || !s.ubicacionAgente) return;
+
+      if (s.descansoUntilMs) descansoUntilMs = s.descansoUntilMs;
+
+      const inputRut = document.getElementById("login-rut");
+      const selUbic = document.getElementById("login-ubicacion");
+      if (inputRut) inputRut.value = s.rutAgente;
+      if (selUbic) selUbic.value = s.ubicacionAgente;
+
+      await intentarLogin({ silent: false });
+    }
+
+    /* =========================
+       LOGOUT / DESCANSO
+       ========================= */
+    async function cerrarSesion() {
+      const msgConfig = document.getElementById("msg-config");
+      if (!idAgenteLogueado) { showMsg(msgConfig, "No hay sesión activa.", "err"); return; }
+      if (!confirm("¿Cerrar sesión? Esto te marcará como No Disponible.")) return;
+
+      const btnLogout = document.getElementById("btn-logout");
+      if (btnLogout) btnLogout.disabled = true;
+
+      try {
+        const url = buildUrl("agenteLogout", { idAgente: idAgenteLogueado });
+        const json = await fetchJson(url, { timeoutMs: 20000 });
+        if (!json.ok) throw new Error(json.error || "Error al cerrar sesión");
+
+        detenerAutoRefresh();
+        stopExpireTicker();
+        stopDescansoTicker_();
+        hideDescansoModal_();
+
+        document.getElementById("card-main").style.display = "none";
+        document.getElementById("card-login").style.display = "block";
+
+        idAgenteLogueado = null;
+        rutAgente = "";
+        nombreAgente = "";
+        ubicacionAgente = "";
+        estadoServicioAgente = "";
+        descansoUntilMs = 0;
+
+        cacheAsignaciones = [];
+        cachePasajeros = [];
+        cacheVuelos = [];
+
+        clearSession();
+
+        setEstadoApi("Desconectado", false);
+        setTopbarInfo({ apiOk: false, lastUpdate: "—" });
+        showMsg(msgConfig, "Sesión cerrada correctamente.", "ok");
+      } catch (err) {
+        console.error(err);
+        showMsg(msgConfig, "Error al cerrar sesión: " + (err.message || err), "err");
+      } finally {
+        if (btnLogout) btnLogout.disabled = false;
+      }
+    }
+
+    async function marcarDescanso() {
+      const msgConfig = document.getElementById("msg-config");
+      if (!idAgenteLogueado) { showMsg(msgConfig, "No hay sesión activa.", "err"); return; }
+
+      if (isEnDescanso_() && getDescansoRemainingMs_() > 0) {
+        showMsg(msgConfig, "Ya estás en descanso. Tiempo restante: " + formatMMSS_(getDescansoRemainingMs_()), "warn");
+        showDescansoModal_();
+        return;
+      }
+
+      const ok = confirm(
+        `¿Seguro quieres indicar que estarás en colación?\n\n` +
+        `Quedarás deshabilitado durante ${DESCANSO_MINUTES} minutos (no te podrán asignar PMR).\n\n` +
+        `¿Confirmas iniciar colación ahora?`
+      );
+      if (!ok) return;
+
+      const btnDescanso = document.getElementById("btn-descanso");
+      if (btnDescanso) btnDescanso.disabled = true;
+
+      try {
+        const url = buildUrl("agenteSetDescanso", { idAgente: idAgenteLogueado });
+        const json = await fetchJson(url, { timeoutMs: 20000 });
+        if (!json.ok) throw new Error(json.error || "Error al marcar descanso");
+
+        estadoServicioAgente = "En descanso";
+
+        if (json.descansoHasta) {
+          const t = new Date(json.descansoHasta).getTime();
+          descansoUntilMs = isNaN(t) ? (Date.now() + DESCANSO_MS) : t;
+        } else {
+          descansoUntilMs = Date.now() + DESCANSO_MS;
+        }
+
+        startDescansoTicker_();
+        renderConfigInfo();
+        updatePillEstado();
+        persistSession();
+
+        // ✅ Mensaje bonito + modal emergente
+        showMsg(msgConfig, `Ahora estás en descanso, tienes ${DESCANSO_MINUTES} minutos.`, "ok");
+        showDescansoModal_();
+
+      } catch (err) {
+        console.error(err);
+        showMsg(msgConfig, "Error al marcar descanso: " + (err.message || err), "err");
+      } finally {
+        if (btnDescanso) btnDescanso.disabled = false;
+      }
+    }
+
+    /* =========================
+       AUTO REFRESH
+       ========================= */
+    function iniciarAutoRefresh() {
+      detenerAutoRefresh();
+      autoRefreshSeconds = 300;
+      const lbl = document.getElementById("refresh-seconds");
+      const cont = document.getElementById("refresh-countdown");
+      if (cont) cont.style.display = "none";
+
+      autoRefreshInterval = setInterval(async () => {
+        autoRefreshSeconds--;
+        if (autoRefreshSeconds <= 0) {
+          autoRefreshSeconds = 300;
+          await cargarDatosAgente(false);
+        }
+        if (lbl) lbl.textContent = autoRefreshSeconds;
+        if (cont) {
+          if (autoRefreshSeconds <= 30) cont.style.display = "block";
+          else cont.style.display = "none";
+        }
+      }, 1000);
+    }
+
+    function detenerAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      const cont = document.getElementById("refresh-countdown");
+      if (cont) cont.style.display = "none";
+    }
+
+    /* =========================
+       CARGAR DATOS (listAll)
+       ========================= */
+    async function cargarDatosAgente(mostrarMensajes = true) {
+      if (!idAgenteLogueado) return;
+
+      const msgAsig = document.getElementById("msg-asignaciones");
+
+      // 1. Carga optimista desde localStorage
+      const hadLocal = loadLocalData();
+      if (hadLocal) {
+        renderAsignacionesAgente();
+        renderHistorialAgente();
+        renderRangoAgente();
+        renderConfigInfo();
+      }
+
+      if (mostrarMensajes && msgAsig) {
+        if (!hadLocal) showMsg(msgAsig, "Cargando asignaciones...", "");
+        else showMsg(msgAsig, "Sincronizando con el servidor...", "");
+      }
+
+      try {
+        const url = buildUrl("listAll") + `&idAgente=${idAgenteLogueado}`;
+        const data = await fetchJson(url, { timeoutMs: 25000 });
+        if (!data.ok) {
+          setEstadoApi("Error", false);
+          setTopbarInfo({ apiOk: false });
+          if (msgAsig && mostrarMensajes) showMsg(msgAsig, data.error || "Error al obtener datos.", "err");
+          return;
+        }
+
+        cacheAsignaciones = data.asignaciones || [];
+        cachePasajeros = data.pasajeros || [];
+        cacheVuelos = data.vuelos || [];
+        cacheAgentes = data.agentes || [];
+
+        // 2. Guardar para la próxima vez
+        saveLocalData();
+
+        setEstadoApi("Conectado", true);
+        setTopbarInfo({
+          apiOk: true,
+          lastUpdate: new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })
+        });
+
+        renderAsignacionesAgente();
+        renderHistorialAgente();
+        renderRangoAgente();
+        renderConfigInfo();
+
+        startExpireTicker();
+
+        if (msgAsig && mostrarMensajes) showMsg(msgAsig, "", "");
+      } catch (err) {
+        console.error(err);
+        setEstadoApi("Error conexión", false);
+        setTopbarInfo({ apiOk: false });
+        // Si ya cargamos localmente, no alarmamos tanto
+        if (msgAsig && mostrarMensajes && !hadLocal) {
+          showMsg(msgAsig, "Error de conexión con la API.", "err");
+        }
+      }
+    }
+
+    /* =========================
+       RENDER: ASIGNACIONES
+       ========================= */
+    /* (Maestro actions consolidated below in MAESTRO ACTIONS section) */
+
+    /* =========================
+    RENDER: ASIGNACIONES
+    ========================= */
+    function renderAsignacionesAgente() {
+      const cont = document.getElementById("lista-asignaciones");
+      const msg = document.getElementById("msg-asignaciones");
+      if (!cont) return;
+      cont.innerHTML = "";
+
+      if (!idAgenteLogueado) {
+        cont.textContent = "Ingresa con tu RUT para ver tus asignaciones.";
+        return;
+      }
+
+      const propias = cacheAsignaciones.filter(a => String(a.idAgente) === String(idAgenteLogueado));
+      const pendientes = propias.filter(a => !esEstadoCerrado_(a.estadoAsignacion));
+
+      if (!pendientes.length) {
+        cont.textContent = "No tienes asignaciones pendientes.";
+        if (msg) showMsg(msg, "", "");
+        return;
+      }
+
+      // Orden por fecha/hora asignación (desc)
+      pendientes.sort((a, b) => {
+        const sa = (a.fechaAsignacion || "") + " " + (a.horaAsignacion || "");
+        const sb = (b.fechaAsignacion || "") + " " + (b.horaAsignacion || "");
+        return sb.localeCompare(sa);
+      });
+
+      // Agrupar por vuelo
+      const groups = new Map();
+      pendientes.forEach(a => {
+        const k = String(a.idVuelo ?? "");
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(a);
+      });
+
+      // Render por grupo
+      Array.from(groups.entries()).forEach(([idVuelo, asigs]) => {
+        const vuelo = cacheVuelos.find(v => String(v.idVuelo) === String(idVuelo));
+        const vueloNum = vuelo ? (vuelo.numeroVuelo || "") : "";
+        const terminal = vuelo ? (vuelo.terminal || "") : "";
+        const puerta = vuelo ? (vuelo.puerta || "") : "";
+        const tipoServ = vuelo ? (vuelo.tipoServicio || "") : "";
+        const horaProg = vuelo ? formatearHora(vuelo.horaProgramada) : "";
+
+        // Revisamos roles basados en [MAESTRO] o [APOYO] en observaciones
+        const isMaestro = asigs.some(a => (a.observaciones || "").toUpperCase().includes("MAESTRO"));
+        const isSupport = asigs.some(a => (a.observaciones || "").toUpperCase().includes("APOYO"));
+
+        // ✅ LÓGICA DE PRIORIDAD DE VISTAS
+
+        // 1. SI ES MAESTRO -> VISTA "BIG BOX" (Unificada)
+        if (isMaestro) {
+          const contCard = document.createElement("div");
+          contCard.className = "asignacion-card vuelo-group";
+
+          const mainEstado = asigs.length > 0 ? normalizarEstado(asigs[0].estadoAsignacion) : "";
+
+          // ESTADOS: A (Pendiente) | B (Aceptada) | C (En curso)
+          const isPendiente = (mainEstado === "en asignacion" || mainEstado === "en espera");
+          const isAceptada = (mainEstado === "aceptada");
+          const isEnCurso = (mainEstado === "en transito");
+
+          // UI STATES
+          const labelMode = `<span class="pill-state" style="background:#fce7f3;color:#be185d;border-color:#f9a8d4;">MAESTRO DE VUELO</span>`;
+
+          const headerOnlyHtml = `
+               <div class="asignacion-header">
+                 <span><b>Vuelo:</b> ${vueloNum || idVuelo || "-"} · ${tipoServ || ""} · <b>Hora:</b> ${horaProg || "-"}</span>
+                 ${labelMode}
+               </div>
+               <div class="group-meta">
+                 ${asigs.length} pasajeros a cargo.<br>
+                 Terminal: ${terminal || "-"} · Puerta: ${puerta || "-"}
+               </div>
+             `;
+
+          // Monitor Apoyos
+          let monitorHtml = "";
+          const apoyosVuelo = cacheAsignaciones.filter(o =>
+            String(o.idVuelo) === String(idVuelo) &&
+            (o.observaciones || "").toUpperCase().includes("APOYO")
+          );
+
+
+          if (apoyosVuelo.length > 0) {
+            const mapAgentes = new Map();
+            apoyosVuelo.forEach(o => {
+              if (!mapAgentes.has(o.idAgente)) {
+                const ag = cacheAgentes.find(g => String(g.idAgente) === String(o.idAgente));
+                const est = normalizarEstado(o.estadoAsignacion);
+                const reportado = (est === "aceptada" || est === "en transito");
+                mapAgentes.set(o.idAgente, { nombre: ag ? ag.nombre : o.idAgente, reportado });
+              }
+            });
+
+            if (mapAgentes.size > 0) {
+              monitorHtml = `<div class="support-monitor" style="margin:10px 0; padding:8px; background:#f3f4f6; border-radius:6px; border:1px solid #e5e7eb;">
+                        <div style="font-size:9px; font-weight:800; color:#374151; margin-bottom:5px; text-transform:uppercase;">Agentes de Apoyo (Monitor):</div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">`;
+
+              mapAgentes.forEach((ua, idAp) => {
+                monitorHtml += `<div style="font-size:10px; display:flex; align-items:center; gap:6px; padding:3px 8px; background:white; border-radius:4px; border:1px solid #d1d5db;">
+                          <input type="checkbox" ${ua.reportado ? 'checked' : ''} disabled>
+                          <b>${ua.nombre}</b>
+                        </div>`;
+              });
+              monitorHtml += `</div></div>`;
+            }
+          }
+
+          // State Logic
+          let wrapperClass = "";
+          let inputsDisabled = false;
+
+          if (isPendiente) {
+            wrapperClass = "is-blurred";
+            inputsDisabled = true;
+          } else if (isAceptada) {
+            wrapperClass = "is-locked";
+            inputsDisabled = true;
+          } else if (isEnCurso) {
+            wrapperClass = "unlocked-container active";
+            inputsDisabled = false;
+          }
+
+          const headerDiv = document.createElement("div");
+          headerDiv.innerHTML = headerOnlyHtml + `<div class="msg" id="msg-ops-vuelo-${idVuelo}"></div>` + monitorHtml;
+          contCard.appendChild(headerDiv);
+
+          const contentWrapper = document.createElement("div");
+          contentWrapper.className = wrapperClass;
+          contentWrapper.style.marginTop = "10px";
+
+          // Prepare Options
+          const agentesOptions = [];
+          agentesOptions.push({ val: String(nombreAgente), label: `${nombreAgente} (Yo)` });
+
+          const mapApoyos = new Map();
+          apoyosVuelo.forEach(o => {
+            if (!mapApoyos.has(o.idAgente)) {
+              const ag = cacheAgentes.find(g => String(g.idAgente) === String(o.idAgente));
+              mapApoyos.set(o.idAgente, ag ? ag.nombre : o.idAgente);
+            }
+          });
+          mapApoyos.forEach((nom, id) => agentesOptions.push({ val: nom, label: nom }));
+
+          // Render Rows
+          asigs.forEach(a => {
+            const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+            // ✅ Omitir pasajeros en estado "Baja" (duplicados de actualización)
+            if (pmr && (pmr.estadoPmr === "Baja" || pmr.estado === "Baja")) return;
+
+            const nombrePmr = pmr ? (pmr.nombre || "") : `PAX-${a.idPmr}`;
+            const asis = pmr ? (pmr.tipoAsistencia || "") : "???";
+
+            let optionsHtml = `<option value="">-- Asignar Agente --</option>`;
+            agentesOptions.forEach(opt => {
+              optionsHtml += `<option value="${opt.val}">${opt.label}</option>`;
+            });
+
+            const statusOptions = `
+                 <option value="" selected disabled>-- Estado --</option>
+                 <option value="Si">Si</option>
+                 <option value="No">No</option>
+                 <option value="Se fue por su cuenta">Se fue por su cuenta</option>
+               `;
+
+            const disabledAttr = inputsDisabled ? "disabled" : "";
+            const row = document.createElement("div");
+            row.className = "chk-row";
+            row.style.alignItems = "center";
+
+            // PREFILL: Si ya tiene estado, pre-seleccionarlo
+            // (Podríamos leer a.estadoAsignacion o a.observaciones, pero por simplicidad asumimos flujo lineal por ahora)
+
+            row.innerHTML = `
+                 <div class="chk-info">
+                   <div class="chk-title">
+                     <b>${nombrePmr || "(sin nombre)"}</b> <span style="font-size:10px; font-weight:400; color:#6b7280;">(${asis})</span>
+                   </div>
+                   <div style="font-size:10px; color:#9ca3af; margin-top:2px;">ID: ${a.idAsignacion}</div>
+                 </div>
+                 <div style="display:flex; flex-direction:column; gap:6px; min-width:140px;">
+                   <select id="sel-agente-${a.idAsignacion}" style="font-size:11px; padding:4px;" ${disabledAttr}>
+                     ${optionsHtml}
+                   </select>
+                   <select id="sel-estado-${a.idAsignacion}" style="font-size:11px; padding:4px;" ${disabledAttr}>
+                      ${statusOptions}
+                   </select>
+                 </div>
+               `;
+            contentWrapper.appendChild(row);
+          });
+
+          contCard.appendChild(contentWrapper);
+
+          // ACTIONS Buttons
+          const actionsDiv = document.createElement("div");
+          actionsDiv.className = "group-actions";
+          actionsDiv.style.justifyContent = "flex-end";
+          actionsDiv.style.marginTop = "12px";
+          actionsDiv.style.borderTop = "1px solid var(--border)";
+          actionsDiv.style.paddingTop = "8px";
+
+          if (isPendiente) {
+            const btnAceptar = document.createElement("button");
+            btnAceptar.className = "btn";
+            btnAceptar.id = `btn-accept-vuelo-${idVuelo}`;
+            btnAceptar.textContent = "Aceptar Asignación";
+            btnAceptar.onclick = () => accionAceptarMaestro(idVuelo);
+            actionsDiv.appendChild(btnAceptar);
+          } else if (isAceptada) {
+            const btnIniciar = document.createElement("button");
+            btnIniciar.className = "btn";
+            btnIniciar.id = `btn-start-vuelo-${idVuelo}`;
+            btnIniciar.textContent = "Iniciar Vuelo";
+            btnIniciar.onclick = () => accionIniciarMaestro(idVuelo);
+            actionsDiv.appendChild(btnIniciar);
+          } else if (isEnCurso) {
+            const btnFinalizar = document.createElement("button");
+            btnFinalizar.className = "btn danger";
+            btnFinalizar.id = `btn-finish-vuelo-${idVuelo}`;
+            btnFinalizar.textContent = "Finalizar Vuelo";
+            btnFinalizar.onclick = () => accionFinalizarMaestro(idVuelo);
+            actionsDiv.appendChild(btnFinalizar);
+          }
+          contCard.appendChild(actionsDiv);
+
+          cont.appendChild(contCard);
+
+        } else if ((asigs.length === 1) || isSupport) {
+          // ✅ CASO 2: ASIGNACIÓN INDIVIDUAL O APOYO (Tarjetas Separadas)
+          asigs.forEach(a => {
+            const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+            const nombrePmr = pmr ? (pmr.nombre || "") : `PAX-${a.idPmr}`;
+            const estadoN = normalizarEstado(a.estadoAsignacion);
+
+            let pillClass = "pill-state";
+            if (estadoN === "en asignacion" || estadoN === "en espera") pillClass += " pill-asignacion";
+            else if (estadoN === "aceptada") pillClass += " pill-aceptada";
+            else if (estadoN === "en transito") pillClass += " pill-transito";
+
+            let roleBadge = "";
+            if (isSupport) roleBadge = `<span class="pill-state" style="background:#dbeafe;color:#1e40af;border-color:#93c5fd;margin-left:5px;">APOYO</span>`;
+
+            const card = document.createElement("div");
+            card.className = "asignacion-card";
+            card.innerHTML = `
+                 <div class="asignacion-header">
+                   <div style="display:flex;gap:6px;align-items:center;">
+                      <span><b>#${a.idAsignacion || ""}</b></span>
+                      ${roleBadge}
+                   </div>
+                   <span class="${pillClass}">${a.estadoAsignacion || "Sin estado"}</span>
+                 </div>
+                 <div class="asignacion-body">
+                   <div><b>Vuelo:</b> ${vueloNum || idVuelo || "-"} · ${tipoServ || ""} · <b>Hora:</b> ${horaProg || "-"}</div>
+                   <div style="font-size:11px;color:#6b7280;margin-top:2px;">
+                      Terminal: ${terminal || "-"} · Puerta: ${puerta || "-"}
+                   </div>
+                   <div style="margin-top:5px; font-weight:700;">PMR: ${nombrePmr || "(sin nombre)"}</div>
+                   <div class="msg" id="msg-ops-${a.idAsignacion}"></div>
+                 </div>
+               `;
+
+            const footer = document.createElement("div");
+            footer.className = "asignacion-footer";
+            if (estadoN === "en asignacion" || estadoN === "en espera") {
+              const btn = document.createElement("button"); btn.className = "btn small"; btn.textContent = "Aceptar";
+              btn.onclick = () => aceptarAsignacion(a.idAsignacion); footer.appendChild(btn);
+            } else if (estadoN === "aceptada") {
+              const btn = document.createElement("button"); btn.className = "btn small"; btn.textContent = "Iniciar Trayecto";
+              btn.onclick = () => iniciarTrayecto(a.idAsignacion); footer.appendChild(btn);
+            } else if (estadoN === "en transito") {
+              const btn = document.createElement("button"); btn.className = "btn small"; btn.textContent = "Terminar Trayecto";
+              btn.onclick = () => terminarTrayecto(a.idAsignacion); footer.appendChild(btn);
+            }
+            card.appendChild(footer);
+            cont.appendChild(card);
+          });
+
+        } else {
+          // ✅ CASO 3: VUELO GRUPAL GENÉRICO (Fallback)
+          const contCard = document.createElement("div");
+          contCard.className = "asignacion-card vuelo-group";
+          const labelMode = `<span class="pill-state">Vuelo Grupal</span>`;
+          const headerHtml = `
+            <div class="asignacion-header">
+              <span><b>Vuelo:</b> ${vueloNum || idVuelo || "-"} · ${tipoServ || ""} · <b>Hora:</b> ${horaProg || "-"}</span>
+              ${labelMode}
+            </div>
+            <div class="group-meta">
+              ${asigs.length} pasajeros.<br>
+              Terminal: ${terminal || "-"} · Puerta: ${puerta || "-"}
+            </div>
+            <div class="msg" id="msg-ops-vuelo-${idVuelo}"></div>
+          `;
+          contCard.innerHTML = headerHtml;
+
+          asigs.forEach(a => {
+            const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+            const row = document.createElement("div");
+            row.className = "chk-row";
+            const isSelected = getSelectedIdsVuelo_(idVuelo, asigs).has(String(a.idAsignacion));
+            row.innerHTML = `
+               <input type="checkbox" ${isSelected ? "checked" : ""} onchange="setSeleccionAsig_('${idVuelo}', '${a.idAsignacion}', this.checked)">
+               <div class="chk-info">
+                 <b>${pmr ? pmr.nombre : ""}</b><br>
+                 <span style="font-size:10px;color:#6b7280;">${a.estadoAsignacion}</span>
+               </div>
+            `;
+            contCard.appendChild(row);
+          });
+
+          const agActions = document.createElement("div");
+          agActions.className = "group-actions";
+          agActions.innerHTML = `
+            <button class="btn small" onclick="accionAceptarVueloTodos_('${idVuelo}')">Aceptar</button>
+            <button class="btn small" onclick="accionIniciarVueloSeleccionados_('${idVuelo}')">Iniciar</button>
+            <button class="btn small" onclick="accionTerminarVueloSeleccionados_('${idVuelo}')">Terminar</button>
+          `;
+          contCard.appendChild(agActions);
+
+          cont.appendChild(contCard);
+        }
+      });
+
+      if (msg) showMsg(msg, "", "");
+    }
+
+    /* =========================
+           RENDER: HISTORIAL
+           ========================= */
+    function renderHistorialAgente() {
+      const cont = document.getElementById("lista-historial");
+      const msg = document.getElementById("msg-historial");
+      if (!cont) return;
+      cont.innerHTML = "";
+
+      if (!idAgenteLogueado) {
+        cont.textContent = "Ingresa con tu RUT para ver tu historial.";
+        return;
+      }
+
+      const propias = cacheAsignaciones.filter(a =>
+        String(a.idAgente) === String(idAgenteLogueado) &&
+        normalizarEstado(a.estadoAsignacion) === "terminado"
+      );
+
+      if (!propias.length) {
+        cont.textContent = "Aún no tienes servicios terminados.";
+        if (msg) showMsg(msg, "", "");
+        return;
+      }
+
+      propias.sort((a, b) => {
+        const sa = (a.fechaAsignacion || "") + " " + (a.horaFin || "");
+        const sb = (b.fechaAsignacion || "") + " " + (b.horaFin || "");
+        return sb.localeCompare(sa);
+      });
+
+      propias.forEach(a => {
+        const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+        const vuelo = cacheVuelos.find(v => String(v.idVuelo) === String(a.idVuelo));
+
+        const nombrePmr = pmr ? (pmr.nombre || "") : "";
+        const vueloNum = vuelo ? (vuelo.numeroVuelo || "") : "";
+        const tipoServ = vuelo ? (vuelo.tipoServicio || "") : "";
+
+        const card = document.createElement("div");
+        card.className = "hist-card";
+        card.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span><b>#${a.idAsignacion || ""}</b> · ${vueloNum || ""} · ${tipoServ || ""}</span>
+            <span style="font-size:11px;color:#6b7280;">
+              ${a.fechaAsignacion || ""} · ${formatearHora(a.horaFin)}
+            </span>
+          </div>
+          <div style="margin-top:3px;font-size:12px;">
+            PMR: ${nombrePmr || "(sin nombre)"}
+          </div>
+        `;
+        cont.appendChild(card);
+      });
+
+      if (msg) showMsg(msg, "", "");
+    }
+
+    /* =========================
+       MI RANGO (placeholder)
+       ========================= */
+    function renderRangoAgente() {
+      const cont = document.getElementById("rango-contenedor");
+      if (!cont) return;
+      cont.innerHTML = `
+        <div class="hist-card">
+          <div style="font-size:13px;font-weight:900;margin-bottom:4px;">
+            Mi rango – próximamente
+          </div>
+          <div style="font-size:12px;color:#6b7280;">
+            Este módulo aún está en desarrollo. En una próxima versión podrás ver tu rango,
+            estadísticas y resumen de asignaciones completadas.
+          </div>
+        </div>
+      `;
+    }
+
+    /* =========================
+       CONFIG INFO
+       ========================= */
+    function renderConfigInfo() {
+      const box = document.getElementById("config-info");
+      if (!box) return;
+
+      if (!idAgenteLogueado) {
+        box.textContent = "Ingresa con tu RUT para ver tus datos.";
+        return;
+      }
+
+      const descansoExtra = (isEnDescanso_() && descansoUntilMs && getDescansoRemainingMs_() > 0)
+        ? `<div><b>Colación restante:</b> ${formatMMSS_(getDescansoRemainingMs_())}</div>`
+        : "";
+
+      box.innerHTML = `
+        <div><b>Nombre:</b> ${nombreAgente || "-"}</div>
+        <div><b>ID Agente:</b> ${idAgenteLogueado || "-"}</div>
+        <div><b>RUT:</b> ${rutAgente || "-"}</div>
+        <div><b>Ubicación actual:</b> ${ubicacionAgente || "-"}</div>
+        <div><b>Estado servicio:</b> ${estadoServicioAgente || "Disponible"}</div>
+        ${descansoExtra}
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">
+          Usa "En Descanso" si estás en colación/pause (45 min). Al terminar, volverás automáticamente a "Disponible".
+        </div>
+      `;
+      updatePillEstado();
+    }
+
+    /* =========================
+       BOTONES ASIGNACIÓN
+       ========================= */
+    function msgOps(idAsignacion) {
+      return document.getElementById(`msg-ops-${idAsignacion}`);
+    }
+
+    async function aceptarAsignacion(idAsignacion) {
+      if (!confirm("¿Aceptar esta asignación?")) return;
+      const el = msgOps(idAsignacion);
+      showMsg(el, "Enviando...", "");
+      try {
+        const url = buildUrl("agenteAceptarAsignacion", { idAsignacion, idAgente: idAgenteLogueado });
+        const json = await fetchJson(url);
+        if (!json.ok) throw new Error(json.error || "Error al aceptar asignación");
+
+        // Optimistic update
+        const asig = cacheAsignaciones.find(a => String(a.idAsignacion) === String(idAsignacion));
+        if (asig) asig.estadoAsignacion = 'Aceptada';
+        const pmr = cachePasajeros.find(p => asig && String(p.idPmr) === String(asig.idPmr));
+        if (pmr) pmr.estado = 'Asignado';
+        renderAsignacionesAgente();
+
+        showMsg(el, "Asignación aceptada.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (err) {
+        console.error(err);
+        showMsg(el, "Error: " + (err.message || err), "err");
+      }
+    }
+
+    async function iniciarTrayecto(idAsignacion) {
+      if (!confirm("¿Iniciar trayecto para esta asignación?")) return;
+      const el = msgOps(idAsignacion);
+      showMsg(el, "Enviando...", "");
+      try {
+        const url = buildUrl("agenteIniciarTrayecto", { idAsignacion, idAgente: idAgenteLogueado });
+        const json = await fetchJson(url);
+        if (!json.ok) throw new Error(json.error || "Error al iniciar trayecto");
+
+        // Optimistic update
+        const asig = cacheAsignaciones.find(a => String(a.idAsignacion) === String(idAsignacion));
+        if (asig) asig.estadoAsignacion = 'En tránsito';
+        renderAsignacionesAgente();
+
+        showMsg(el, "Trayecto iniciado.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (err) {
+        console.error(err);
+        showMsg(el, "Error: " + (err.message || err), "err");
+      }
+    }
+
+    async function terminarTrayecto(idAsignacion) {
+      if (!confirm("¿Terminar trayecto de esta asignación?")) return;
+      const el = msgOps(idAsignacion);
+      showMsg(el, "Enviando...", "");
+      try {
+        const url = buildUrl("agenteTerminarTrayecto", { idAsignacion, idAgente: idAgenteLogueado });
+        const json = await fetchJson(url);
+        if (!json.ok) throw new Error(json.error || "Error al terminar trayecto");
+
+        // Optimistic update
+        const asig = cacheAsignaciones.find(a => String(a.idAsignacion) === String(idAsignacion));
+        if (asig) asig.estadoAsignacion = 'Terminado';
+        const pmr = cachePasajeros.find(p => asig && String(p.idPmr) === String(asig.idPmr));
+        if (pmr) pmr.estado = 'Terminado';
+        renderAsignacionesAgente();
+        renderHistorialAgente();
+
+        showMsg(el, "Trayecto terminado.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (err) {
+        console.error(err);
+        showMsg(el, "Error: " + (err.message || err), "err");
+      }
+    }
+
+    async function cancelarAsignacion(idAsignacion, motivo) {
+      const el = msgOps(idAsignacion);
+      if (!motivo) {
+        showMsg(el, "Debes indicar un motivo para cancelar el servicio.", "warn");
+        return;
+      }
+      if (!confirm("¿Confirmas la cancelación de este servicio?")) return;
+
+      const btnConfirm = document.getElementById(`btn-cancel-confirm-${idAsignacion}`);
+      if (btnConfirm) btnConfirm.disabled = true;
+
+      showMsg(el, "Enviando cancelación...", "");
+      try {
+        const url = buildUrl("agenteCancelarAsignacion", { idAsignacion, idAgente: idAgenteLogueado, motivo });
+        const json = await fetchJson(url, { timeoutMs: 20000 });
+        if (!json.ok) throw new Error(json.error || "Error al cancelar servicio");
+
+        // Optimistic update
+        const asig = cacheAsignaciones.find(a => String(a.idAsignacion) === String(idAsignacion));
+        if (asig) asig.estadoAsignacion = 'Cancelada';
+        const pmr = cachePasajeros.find(p => asig && String(p.idPmr) === String(asig.idPmr));
+        if (pmr) pmr.estado = 'En espera';
+        renderAsignacionesAgente();
+
+        showMsg(el, "Servicio cancelado correctamente.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (err) {
+        console.error(err);
+        showMsg(el, "Error: " + (err.message || err), "err");
+      } finally {
+        if (btnConfirm) btnConfirm.disabled = false;
+      }
+    }
+
+    async function accionAceptarMaestro(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const el = msgOpsVuelo_(k);
+
+      if (!confirm("¿Aceptar asignación de vuelo completo?")) return;
+
+      setBusyVuelo_(k, true);
+      showMsg(el, "Enviando aceptación...", "");
+
+      try {
+        const url = buildUrl("agenteMasivoVuelo", {
+          idVuelo: idVuelo,
+          idAgente: idAgenteLogueado,
+          tipoAccion: 'Aceptar'
+        });
+        const json = await fetchJson(url);
+        if (!json.ok) throw new Error(json.error || "Error al aceptar vuelo.");
+
+        // Optimistic update
+        const asigs = getPendientesVuelo_(idVuelo);
+        asigs.forEach(a => {
+          a.estadoAsignacion = 'Aceptada';
+          const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+          if (pmr) pmr.estado = 'Asignado';
+        });
+        renderAsignacionesAgente();
+
+        showMsg(el, "Vuelo aceptado correctamente.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (e) {
+        console.error(e);
+        const msgErr = e.message || String(e);
+        showMsg(el, "Error: " + msgErr, "err");
+        alert("Error al aceptar vuelo: " + msgErr);
+      } finally {
+        setBusyVuelo_(k, false);
+      }
+    }
+
+    async function accionIniciarMaestro(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const el = msgOpsVuelo_(k);
+
+      if (!confirm("¿Iniciar servicio del vuelo? (Se bloquearán cambios hasta finalizar)")) return;
+
+      setBusyVuelo_(k, true);
+      showMsg(el, "Enviando inicio...", "");
+
+      try {
+        const url = buildUrl("agenteMasivoVuelo", {
+          idVuelo: idVuelo,
+          idAgente: idAgenteLogueado,
+          tipoAccion: 'Iniciar'
+        });
+        const json = await fetchJson(url);
+        if (!json.ok) throw new Error(json.error || "Error al iniciar vuelo.");
+
+        // Optimistic update
+        const asigs = getPendientesVuelo_(idVuelo);
+        asigs.forEach(a => {
+          a.estadoAsignacion = 'En tránsito';
+        });
+        renderAsignacionesAgente();
+
+        showMsg(el, "Vuelo iniciado. Buen servicio.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (e) {
+        console.error(e);
+        const msgErr = e.message || String(e);
+        showMsg(el, "Error: " + msgErr, "err");
+        alert("Error al iniciar vuelo: " + msgErr);
+      } finally {
+        setBusyVuelo_(k, false);
+      }
+    }
+
+    async function accionFinalizarMaestro(idVuelo) {
+      const k = vueloKey_(idVuelo);
+      const el = msgOpsVuelo_(k);
+      const asigs = getPendientesVuelo_(k);
+      const datosPax = {};
+
+      let valid = true;
+      let errPax = "";
+
+      for (const a of asigs) {
+        const selStatus = document.getElementById(`sel-estado-${a.idAsignacion}`);
+        const selAgente = document.getElementById(`sel-agente-${a.idAsignacion}`);
+
+        const st = selStatus ? selStatus.value : "";
+        const ag = selAgente ? selAgente.value : "";
+
+        if (!st) {
+          if (selStatus) selStatus.style.borderColor = "red";
+          valid = false;
+          errPax = `Faltan seleccionar estados (Si/No/...) en algunos pasajeros.`;
+          break;
+        } else {
+          if (selStatus) selStatus.style.borderColor = "#d1d5db";
+        }
+
+        if (st === "Si" && !ag) {
+          if (selAgente) selAgente.style.borderColor = "red";
+          valid = false;
+          errPax = `Si el servicio se realizó (Si), debes indicar el agente.`;
+          break;
+        } else {
+          if (selAgente) selAgente.style.borderColor = "#d1d5db";
+        }
+
+        datosPax[a.idPmr] = {
+          status: st,
+          agente: ag || nombreAgente
+        };
+      }
+
+      if (!valid) {
+        alert("Atención: " + errPax);
+        return;
+      }
+
+      if (!confirm(`¿Confirmas finalizar el vuelo y registrar los resultados de ${asigs.length} pasajeros?`)) return;
+
+      setBusyVuelo_(k, true);
+      showMsg(el, "Enviando cierre masivo...", "");
+
+      try {
+        const url = buildUrl("agenteMasivoVuelo", {
+          idVuelo: idVuelo,
+          idAgente: idAgenteLogueado,
+          tipoAccion: 'Finalizar',
+          datosPax: JSON.stringify(datosPax)
+        });
+        const json = await fetchJson(url, { timeoutMs: 35000 });
+        if (!json.ok) throw new Error(json.error || "Error al finalizar");
+
+        // Optimistic update
+        asigs.forEach(a => {
+          a.estadoAsignacion = 'Terminado';
+          const pmr = cachePasajeros.find(p => String(p.idPmr) === String(a.idPmr));
+          if (pmr) pmr.estado = (datosPax[a.idPmr].status === 'Si') ? 'Terminado' : 'No realizado';
+        });
+        renderAsignacionesAgente();
+        renderHistorialAgente();
+
+        showMsg(el, "Vuelo finalizado correctamente.", "ok");
+        if (window.notificarUpdate) window.notificarUpdate("asignaciones");
+        await cargarDatosAgente(false);
+      } catch (e) {
+        console.error(e);
+        const msgErr = e.message || String(e);
+        showMsg(el, "Error al finalizar: " + msgErr, "err");
+        alert("Error al finalizar vuelo: " + msgErr);
+      } finally {
+        setBusyVuelo_(k, false);
+      }
+    }
+
+    async function toggleLlegadaApoyo(idVuelo, idAgenteApoyo, llego) {
+      const el = msgOpsVuelo_(idVuelo);
+      const chk = document.getElementById(`chk-apoyo-${idVuelo}-${idAgenteApoyo}`);
+
+      try {
+        if (chk) chk.disabled = true;
+        const url = buildUrl("agenteLlegadaApoyo", { idVuelo, idAgenteApoyo, llego: !!llego });
+        const json = await fetchJson(url, { timeoutMs: 15000 });
+        if (!json.ok) throw new Error(json.error || "Error al reportar llegada");
+
+        showMsg(el, `Estado de apoyo actualizado: ${json.estado || (llego ? "Llegó" : "En asignación")}`, "ok");
+        // Recargamos localmente para refrescar los dropdowns de agentes prestadores
+        await cargarDatosAgente(false);
+      } catch (e) {
+        console.error(e);
+        showMsg(el, "Error: " + (e.message || e), "err");
+        if (chk) chk.checked = !llego; // Revertir
+      } finally {
+        if (chk) chk.disabled = false;
+      }
+    }
+
+
+    /* =========================
+       EVENTOS
+       ========================= */
+    document.addEventListener("DOMContentLoaded", () => {
+      loadBulkUi_();
+      const inputRut = document.getElementById("login-rut");
+      const selUbic = document.getElementById("login-ubicacion");
+      const btnLogin = document.getElementById("btn-login-agente");
+      const btnAuto = document.getElementById("btn-autologin");
+
+      if (inputRut) {
+        inputRut.addEventListener("blur", () => { inputRut.value = rutLooseNormalize(inputRut.value); });
+        inputRut.addEventListener("keyup", (ev) => { if (ev.key === "Enter") intentarLogin({ silent: false }); });
+      }
+      if (btnLogin) btnLogin.addEventListener("click", () => intentarLogin({ silent: false }));
+
+      // prefill desde sesión anterior
+      const s = getSession();
+      if (s && s.rutAgente) {
+        if (inputRut) inputRut.value = s.rutAgente;
+        if (selUbic && s.ubicacionAgente) selUbic.value = s.ubicacionAgente;
+        if (btnAuto) btnAuto.style.display = "inline-flex";
+        if (s.descansoUntilMs) descansoUntilMs = s.descansoUntilMs;
+      }
+      if (btnAuto) btnAuto.addEventListener("click", autologin);
+
+      const btnRefrescar = document.getElementById("btn-refrescar-datos");
+      if (btnRefrescar) btnRefrescar.addEventListener("click", () => cargarDatosAgente(true));
+
+      document.getElementById("btn-logout").addEventListener("click", cerrarSesion);
+      document.getElementById("btn-descanso").addEventListener("click", marcarDescanso);
+
+      // modal descanso
+      const close1 = document.getElementById("btn-descanso-close");
+      const close2 = document.getElementById("btn-descanso-entendido");
+      if (close1) close1.addEventListener("click", hideDescansoModal_);
+      if (close2) close2.addEventListener("click", hideDescansoModal_);
+      const overlay = document.getElementById("descanso-modal");
+      if (overlay) {
+        overlay.addEventListener("click", (ev) => {
+          if (ev.target === overlay) hideDescansoModal_();
+        });
+      }
+
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+          btn.classList.add("active");
+          const id = btn.dataset.tab;
+          const sec = document.getElementById(id);
+          if (sec) sec.classList.add("active");
+        });
+      });
+
+      setEstadoApi("Desconectado", false);
+      setTopbarInfo({ apiOk: false });
+
+      // Ticker para actualizar contadores de aceptación (cada 1s)
+      setInterval(() => {
+        // Solo si hay asignaciones "en asignacion" que sean maestras
+        const hasPendingMaestro = cacheAsignaciones.some(a =>
+          String(a.idAgente) === String(idAgenteLogueado) &&
+          (a.observaciones || "").toUpperCase().includes("MAESTRO") &&
+          (normalizarEstado(a.estadoAsignacion) === "en asignacion" || normalizarEstado(a.estadoAsignacion) === "en espera")
+        );
+        if (hasPendingMaestro) {
+          renderAsignacionesAgente();
+        }
+      }, 1000);
+    });
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDG0Klm9UF8CGVWvUJfBijbVRL9BVTJ7ag",
+      authDomain: "sistemapmraerolinea.firebaseapp.com",
+      projectId: "sistemapmraerolinea",
+      storageBucket: "sistemapmraerolinea.firebasestorage.app",
+      messagingSenderId: "788258832323",
+      appId: "1:788258832323:web:3f74325486d26a5ec74776",
+      measurementId: "G-CX4EJHG81D"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const updatesDocRef = doc(db, "meta", "updates");
+
+    onSnapshot(updatesDocRef, (docSnap) => {
+      if (docSnap.metadata.hasPendingWrites) return;
+      const data = docSnap.data();
+      if (data && typeof window.cargarDatosAgente === 'function' && idAgenteLogueado) {
+        window.cargarDatosAgente(false).catch(console.error);
+      }
+    });
+
+    window.notificarUpdate = async (type = "general") => {
+      try {
+        await setDoc(updatesDocRef, {
+          lastType: type,
+          lastBy: "agent_client_" + (idAgenteLogueado || "unknown"),
+          ts: serverTimestamp(),
+          nonce: Math.random()
+        });
+      } catch (e) {
+        console.error("Error notifying update:", e);
+      }
+    };
+  </script>
+</body>
+
+</html>

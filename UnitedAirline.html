@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>United Airlines PMR – Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root{
+      --bg:#f3f4f6;
+      --surface:#ffffff;
+      --surface-2:#f9fafb;
+      --border:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+
+      /* United vibes: azul predominante */
+      --primary:#0b2343;      /* deep United blue */
+      --primary-2:#1f3b6f;    /* lighter blue */
+      --primary-3:#3b82f6;    /* accent */
+
+      --shadow:0 8px 22px rgba(15,23,42,.08);
+      --shadow-soft:0 4px 12px rgba(15,23,42,.06);
+
+      --header-h:72px;
+      --logo-h: calc(var(--header-h) - 18px);
+
+      --danger:#dc2626;
+      --ok:#16a34a;
+      --warn:#f59e0b;
+
+      /* LOGO United (Drive) */
+      --united-logo-url: url("https://lh3.googleusercontent.com/d/1NFypclsfXeb5FzkrTRG2WIY8vXXW-ATC=w1600");
+    }
+
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: Arial, sans-serif; background:var(--bg); color:var(--text); }
+
+    /* =========================
+       HEADER (BLANCO, SIN IMAGEN)
+       ========================= */
+    header{
+      min-height:var(--header-h);
+      background:#fff;
+      color:var(--text);
+      padding:10px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      border-bottom:1px solid var(--border);
+      box-shadow:var(--shadow-soft);
+      position:sticky;
+      top:0;
+      z-index:10;
+    }
+
+    .header-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width: 320px;
+    }
+    .logo-box{
+      height: var(--logo-h);
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+    }
+    .united-logo{
+      height: 100%;
+      width: auto;
+      max-width: 300px;
+      display:block;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 6px rgba(15,23,42,.12));
+    }
+    header .brand{display:flex;flex-direction:column;}
+    header .brand-name{font-size:16px;font-weight:900;letter-spacing:.02em;color:var(--text);}
+    header .brand-sub{font-size:11px;color:var(--muted);}
+    header .status{font-size:11px;text-align:right;color:var(--muted);}
+    header .status #api-status{color:var(--text); font-weight:800;}
+
+    .app{
+      display:flex;
+      height:calc(100vh - var(--header-h));
+    }
+
+    .sidebar{
+      width:340px;
+      background:var(--surface);
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      overflow-y:auto;
+      border-right:1px solid var(--border);
+      box-shadow:var(--shadow-soft);
+      position:relative;
+      z-index:2;
+    }
+
+    .sidebar-section-title{
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.14em;
+      color:var(--muted);
+      margin-bottom:6px;
+      font-weight:900;
+    }
+
+    .nav{display:flex;flex-direction:column;gap:6px;}
+    .nav-btn{
+      border:1px solid rgba(31,59,111,.45);
+      border-radius:12px;
+      background:linear-gradient(180deg, var(--primary), var(--primary-2));
+      color:#fff;
+      padding:9px 10px;
+      font-size:12px;
+      text-align:left;
+      cursor:pointer;
+      transition:transform .05s, box-shadow .15s, filter .15s, color .15s, border .15s;
+      font-weight:900;
+      box-shadow:0 4px 12px rgba(11,35,67,.22);
+    }
+    .nav-btn:hover{
+      color:#dbeafe;
+      filter:brightness(1.03);
+      box-shadow:0 8px 18px rgba(11,35,67,.26);
+      transform:translateY(-1px);
+      border-color:rgba(59,130,246,.55);
+    }
+    .nav-btn.active{
+      color:#dbeafe;
+      border-color:rgba(59,130,246,.60);
+      box-shadow:0 10px 20px rgba(11,35,67,.30);
+    }
+
+    .actions-box{
+      background:var(--surface);
+      border-radius:14px;
+      padding:10px;
+      font-size:12px;
+      border:1px solid var(--border);
+      box-shadow:var(--shadow);
+    }
+
+    .btn-submit{
+      padding:10px 12px;
+      border:none;
+      border-radius:999px;
+      background:linear-gradient(90deg, var(--primary), var(--primary-2));
+      color:#fff;
+      font-size:12px;
+      cursor:pointer;
+      box-shadow:var(--shadow-soft);
+      transition:transform .05s, box-shadow .15s, filter .15s;
+      width:100%;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-weight:900;
+    }
+    .btn-submit:hover{ filter:brightness(1.05); box-shadow:var(--shadow); transform:translateY(-1px); }
+    .btn-submit:disabled{ opacity:.6; cursor:default; box-shadow:none; transform:none; }
+
+    .btn-mini{
+      border:1px solid var(--border);
+      background:var(--surface);
+      color:var(--text);
+      border-radius:999px;
+      padding:7px 10px;
+      font-size:11px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:var(--shadow-soft);
+      transition:transform .05s, box-shadow .15s, background .15s, border-color .15s;
+      white-space:nowrap;
+    }
+    .btn-mini:hover{
+      background:#eff6ff;
+      border-color:#bfdbfe;
+      box-shadow:var(--shadow);
+      transform:translateY(-1px);
+    }
+    .btn-danger{
+      border:1px solid rgba(220,38,38,.35);
+      background:#fff;
+      color:var(--danger);
+    }
+    .btn-danger:hover{
+      background:rgba(220,38,38,.06);
+      border-color:rgba(220,38,38,.55);
+    }
+
+    /* =========================
+       MAIN + FONDO DIFUMINADO (FRANJAS + LOGO GIGANTE)
+       ========================= */
+    .main{
+      flex:1;
+      padding:12px 14px;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+
+      position:relative;
+      overflow:hidden;
+      z-index:1;
+    }
+
+    /* Franjas azules difuminadas */
+    .main::before{
+      content:"";
+      position:absolute;
+      inset:-90px -90px -90px -90px;
+      background:
+        linear-gradient(118deg,
+          transparent 0 30%,
+          rgba(11,35,67,.18) 30% 38%,
+          transparent 38% 43%,
+          rgba(31,59,111,.14) 43% 50%,
+          transparent 50% 54%,
+          rgba(59,130,246,.12) 54% 59%,
+          transparent 59% 63%,
+          rgba(11,35,67,.14) 63% 78%,
+          transparent 78% 100%
+        ),
+        radial-gradient(closest-side at 18% 22%, rgba(59,130,246,.12), transparent 62%),
+        radial-gradient(closest-side at 84% 28%, rgba(31,59,111,.10), transparent 60%),
+        radial-gradient(closest-side at 65% 85%, rgba(11,35,67,.10), transparent 62%);
+      transform: rotate(-3deg) scale(1.05);
+      filter: blur(22px);
+      opacity: .98;
+      pointer-events:none;
+      z-index:0;
+    }
+
+    /* Logo gigante + difuminado */
+    .main::after{
+      content:"";
+      position:absolute;
+      inset:-30px;
+      background-image: var(--united-logo-url);
+      background-repeat:no-repeat;
+      background-position:center;
+      background-size: min(1100px, 86vw);
+      opacity: .14;
+      filter: blur(2px);
+      transform: rotate(-8deg);
+      pointer-events:none;
+      z-index:0;
+    }
+
+    .main > *{ position:relative; z-index:1; }
+
+    .view-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .view-title{
+      font-size:16px;
+      font-weight:900;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+      color:var(--text);
+    }
+    .view-filters{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;align-items:center;}
+
+    .chip{
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:var(--surface);
+      padding:6px 10px;
+      color:var(--text);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      box-shadow:var(--shadow-soft);
+    }
+    .chip-label{font-weight:900;text-transform:uppercase;font-size:10px;color:var(--muted);}
+
+    .view-container{
+      background: rgba(255,255,255,.90);
+      border-radius:16px;
+      padding:10px;
+      box-shadow:var(--shadow);
+      border:1px solid var(--border);
+      backdrop-filter: blur(2px);
+    }
+
+    .empty-state{
+      padding:16px;
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      border-radius:12px;
+      border:1px dashed #d1d5db;
+      background:var(--surface-2);
+      margin-top:10px;
+    }
+
+    label{ display:block; margin-top:8px; font-size:11px; color:var(--text); font-weight:800; }
+    input[type="text"], input[type="number"], input[type="date"], input[type="time"], select, textarea{
+      width:100%;
+      margin-top:4px;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:var(--surface);
+      color:var(--text);
+      font-size:12px;
+      outline:none;
+      transition:border .12s, box-shadow .12s, background .12s;
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color:#bfdbfe;
+      box-shadow:0 0 0 3px rgba(59,130,246,.16);
+    }
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      font-size:11px;
+      margin-top:8px;
+      color:var(--text);
+      overflow:hidden;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--surface);
+    }
+    th,td{
+      border-bottom:1px solid var(--border);
+      padding:7px 8px;
+      text-align:left;
+      white-space:nowrap;
+      vertical-align:middle;
+    }
+    th{
+      background:var(--surface-2);
+      color:var(--muted);
+      position:sticky;
+      top:0;
+      z-index:1;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      font-size:10px;
+      font-weight:900;
+    }
+    tr:last-child td{ border-bottom:none; }
+    td + td, th + th { border-left:1px solid var(--border); }
+    tr:hover{ filter:brightness(0.985); }
+
+    .msg{font-size:11px;margin-top:8px;color:var(--muted);line-height:1.35;}
+    .msg.ok{color:var(--ok);font-weight:900;}
+    .msg.err{color:var(--danger);font-weight:900;}
+    .msg.warn{color:var(--warn);font-weight:900;}
+
+    /* =========================
+       MODAL
+       ========================= */
+    .modal-backdrop{
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,.45);
+      backdrop-filter: blur(4px);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:50;
+      padding:14px;
+    }
+    .modal-backdrop.show{ display:flex; }
+
+    .modal{
+      width:min(1120px, 98vw);
+      max-height:92vh;
+      overflow:auto;
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:18px;
+      box-shadow:0 24px 60px rgba(15,23,42,.25);
+      padding:12px;
+    }
+    .modal-header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 10px 4px 10px;
+      border-bottom:1px solid var(--border);
+    }
+    .modal-title{
+      font-size:14px;
+      font-weight:1000;
+      letter-spacing:.02em;
+      text-transform:uppercase;
+    }
+    .modal-sub{
+      margin-top:4px;
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.35;
+      max-width: 920px;
+    }
+    .modal-body{
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    }
+
+    .flight-card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:var(--surface-2);
+      box-shadow:var(--shadow-soft);
+      overflow:hidden;
+    }
+    .flight-card-h{
+      background:var(--surface);
+      border-bottom:1px solid var(--border);
+      padding:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .flight-card-h .title{
+      font-weight:1000;
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.10em;
+      color:var(--muted);
+    }
+    .flight-card-b{
+      padding:10px;
+      display:grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 1fr;
+      gap:10px;
+      align-items:end;
+    }
+    .flight-card-b .span2{ grid-column: span 2; }
+    .flight-card-b .span6{ grid-column: span 6; }
+
+    .passengers-box{
+      padding:10px;
+      border-top:1px dashed var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,.4), rgba(255,255,255,.0));
+    }
+    .passengers-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .passengers-top .hint{
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .btn-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+
+    .btn-pill{
+      border:1px solid rgba(31,59,111,.45);
+      border-radius:999px;
+      background:linear-gradient(180deg, var(--primary), var(--primary-2));
+      color:#fff;
+      padding:7px 10px;
+      font-size:11px;
+      cursor:pointer;
+      font-weight:900;
+      box-shadow:0 4px 12px rgba(11,35,67,.22);
+      transition:transform .05s, box-shadow .15s, filter .15s, color .15s, border .15s;
+      white-space:nowrap;
+    }
+    .btn-pill:hover{
+      color:#dbeafe;
+      filter:brightness(1.03);
+      box-shadow:0 8px 18px rgba(11,35,67,.26);
+      transform:translateY(-1px);
+      border-color:rgba(59,130,246,.55);
+    }
+
+    .btn-pill.secondary{
+      background: #fff;
+      color: var(--text);
+      border-color: var(--border);
+      box-shadow: var(--shadow-soft);
+    }
+    .btn-pill.secondary:hover{
+      background:#eff6ff;
+      border-color:#bfdbfe;
+      color: var(--text);
+    }
+
+    .pax-table{
+      width:100%;
+      margin-top:8px;
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid var(--border);
+      background:var(--surface);
+    }
+    .pax-table table{ margin-top:0; border:none; border-radius:0; }
+    .pax-table th{ position:static; }
+    .pax-table td{ white-space:normal; }
+
+    .pax-input{
+      width:100%;
+      padding:7px 9px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-size:12px;
+      outline:none;
+    }
+    .pax-input:focus{
+      border-color:#bfdbfe;
+      box-shadow:0 0 0 3px rgba(59,130,246,.16);
+    }
+
+    .cell-actions{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:6px;
+    }
+    .btn-x{
+      border:1px solid rgba(220,38,38,.35);
+      background:#fff;
+      color:var(--danger);
+      border-radius:10px;
+      padding:6px 10px;
+      cursor:pointer;
+      font-weight:900;
+      font-size:11px;
+      transition:transform .05s, box-shadow .15s, background .15s;
+      box-shadow:var(--shadow-soft);
+      white-space:nowrap;
+    }
+    .btn-x:hover{ background:rgba(220,38,38,.06); transform:translateY(-1px); }
+    .btn-x:active{ transform:translateY(0); }
+
+    .modal-footer{
+      border-top:1px solid var(--border);
+      padding:10px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      background: var(--surface);
+      border-radius: 0 0 18px 18px;
+    }
+
+    @media(max-width:1050px){
+      .flight-card-b{ grid-template-columns: 1fr 1fr; }
+      .flight-card-b .span2, .flight-card-b .span6{ grid-column: span 2; }
+    }
+    @media(max-width:900px){
+      .app{flex-direction:column;height:auto;}
+      .sidebar{width:100%;}
+      header{ padding:10px 12px; }
+      .header-left{ min-width:unset; }
+      :root{ --logo-h: 42px; }
+      .united-logo{ max-width: 260px; }
+      .main::after{
+        background-size: min(900px, 92vw);
+        opacity: .12;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<header>
+  <div class="header-left">
+    <div class="logo-box">
+      <img
+        class="united-logo"
+        src="https://lh3.googleusercontent.com/d/1NFypclsfXeb5FzkrTRG2WIY8vXXW-ATC=w900"
+        alt="United Airlines"
+        decoding="async"
+        loading="eager"
+        referrerpolicy="no-referrer"
+        onerror="this.onerror=null; this.src='https://drive.google.com/uc?export=view&id=1NFypclsfXeb5FzkrTRG2WIY8vXXW-ATC';"
+      />
+    </div>
+    <div class="brand">
+      <span class="brand-name">Portal United Airlines</span>
+      <span class="brand-sub">Carga manual de Vuelos y Pasajeros PMR</span>
+    </div>
+  </div>
+
+  <div class="status">
+    <div id="api-status">Conectando con API...</div>
+    <div id="last-update">Última actualización: --</div>
+  </div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-section-title">Vistas</div>
+      <div class="nav">
+        <button class="nav-btn active" data-view="vuelos">Vuelos</button>
+        <button class="nav-btn" data-view="pmr">Pasajeros PMR</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sidebar-section-title">Acciones</div>
+      <div class="actions-box">
+        <button class="btn-submit" id="btn-open-modal">Crear Vuelo / Pasajero(s)</button>
+        <div class="msg" id="sidebar-hint">
+          Se abrirá una ventana con el formulario del vuelo y una tabla para ingresar 1 o más pasajeros.
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="view-header">
+      <div class="view-title" id="view-title">Vuelos</div>
+      <div class="view-filters">
+        <button class="btn-mini" id="btn-actualizar">Actualizar datos</button>
+        <div class="chip" id="chip-scope">
+          <span class="chip-label">Ámbito:</span>
+          <span id="chip-scope-text">Hoy y mañana (futuro)</span>
+        </div>
+        <div class="chip" id="chip-airline">
+          <span class="chip-label">Aerolínea:</span>
+          <span id="chip-airline-text">UNITED AIRLINES</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="view-container">
+      <section id="view-vuelos" class="view-section active">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-bottom:6px;align-items:end;">
+          <div style="min-width:160px;">
+            <label>Filtro N° vuelo <input type="text" id="filtro-vuelo-num" placeholder="Ej: UA123" /></label>
+          </div>
+
+          <div style="min-width:160px;">
+            <label>Desde (fecha) <input type="date" id="filtro-vuelos-desde" /></label>
+          </div>
+          <div style="min-width:160px;">
+            <label>Hasta (fecha) <input type="date" id="filtro-vuelos-hasta" /></label>
+          </div>
+
+          <div style="min-width:180px;">
+            <button class="btn-mini" id="btn-vuelos-hoymanana" type="button">Hoy + Mañana</button>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID Vuelo</th><th>Fecha</th><th>Hora</th><th>Aerolínea</th><th>N° Vuelo</th>
+              <th>Terminal</th><th>Puerta</th><th>Espigón</th><th>Cant PMR</th><th>Tipo servicio</th><th>Estado</th><th>Obs</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-vuelos"></tbody>
+        </table>
+        <div class="empty-state" id="empty-vuelos" style="display:none;">No hay vuelos para los filtros seleccionados.</div>
+      </section>
+
+      <section id="view-pmr" class="view-section" style="display:none;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;margin-bottom:6px;align-items:end;">
+          <div style="min-width:260px;">
+            <label>Filtrar por Vuelo (N° + fecha)
+              <select id="filtro-pmr-vuelo"><option value="">Todos</option></select>
+            </label>
+          </div>
+          <div style="min-width:180px;">
+            <label>Filtrar por Estado
+              <select id="filtro-pmr-estado"><option value="">Todos</option></select>
+            </label>
+          </div>
+
+          <div style="min-width:160px;">
+            <label>Desde (fecha) <input type="date" id="filtro-pmr-desde" /></label>
+          </div>
+          <div style="min-width:160px;">
+            <label>Hasta (fecha) <input type="date" id="filtro-pmr-hasta" /></label>
+          </div>
+
+          <div style="min-width:180px;">
+            <button class="btn-mini" id="btn-pmr-hoymanana" type="button">Hoy + Mañana</button>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID PMR</th><th>Vuelo</th><th>Fecha</th><th>Hora</th><th>Aerolínea</th><th>Terminal</th>
+              <th>Nombre</th><th>Tipo asistencia</th><th>Edad</th><th>RUT / ID</th><th>Estado</th><th>Obs</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-pmr"></tbody>
+        </table>
+        <div class="empty-state" id="empty-pmr" style="display:none;">No hay pasajeros PMR para los filtros seleccionados.</div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title">Carga manual: Vuelos y Pasajeros</div>
+        <div class="modal-sub">
+          Completa la información del vuelo (obligatorio: <b>Vuelo</b>, <b>Fecha</b>, <b>Hora</b>, <b>Terminal</b>; opcional: Puerta, Espigón).
+          Luego completa al menos <b>1 pasajero</b> (obligatorio: <b>Nombre</b> y <b>Tipo Asistencia</b>; opcional: Edad y RUT/Pasaporte/Ticket).
+          Puedes agregar más pasajeros con <b>+ Pasajero</b> y agregar otro vuelo completo con <b>+ Vuelo adicional</b>.
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-mini btn-danger" id="btn-close-modal" type="button">Cerrar</button>
+      </div>
+    </div>
+
+    <div class="modal-body" id="modal-body"></div>
+
+    <div class="modal-footer">
+      <div class="btn-row">
+        <button class="btn-pill secondary" id="btn-add-flight" type="button">+ Vuelo adicional</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn-pill secondary" id="btn-clear-modal" type="button">Limpiar formulario</button>
+        <button class="btn-pill" id="btn-submit-all" type="button">Guardar todo</button>
+      </div>
+      <div class="msg" id="modal-msg" style="flex-basis:100%;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /***************************************************************
+   * CONFIG
+   ***************************************************************/
+  const API_URL = "https://script.google.com/macros/s/AKfycbwFBHpIx-gQrVAvj5Vv-I-l1X3NR9MYbyTV9CtxgKCw7oPeuxIE5qrYx3eZdDoIroTE/exec";
+
+  const PORTAL_AIRLINE = "UNITED AIRLINES";
+  const PORTAL_AIRLINE_KEY = "united"; // filtro robusto
+
+  /***************************************************************
+   * STATE
+   ***************************************************************/
+  let cacheVuelos = [];
+  let cachePasajeros = [];
+
+  let autoRefreshInterval = null;
+  let autoRefreshSeconds = 180;
+
+  const state = { flightBlocks: [] };
+
+  /***************************************************************
+   * HELPERS (fecha/hora)
+   ***************************************************************/
+  function normalizarFechaExcel(valor) {
+    if (valor === null || valor === undefined || valor === "") return "";
+    if (typeof valor === "number") {
+      const ms = Math.round((valor - 25569) * 86400 * 1000);
+      const d = new Date(ms);
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth() + 1).padStart(2,"0");
+      const dd = String(d.getUTCDate()).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    if (valor instanceof Date) {
+      const yyyy = valor.getUTCFullYear();
+      const mm = String(valor.getUTCMonth() + 1).padStart(2,"0");
+      const dd = String(valor.getUTCDate()).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    const s = String(valor).trim();
+    let m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+    m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+    const d = new Date(s);
+    if (!isNaN(d)) {
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth()+1).padStart(2,"0");
+      const dd = String(d.getUTCDate()).padStart(2,"0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return s;
+  }
+
+  function formatearHora(horaRaw) {
+    if (!horaRaw) return "";
+    if (horaRaw instanceof Date) {
+      const hh = String(horaRaw.getHours()).padStart(2,"0");
+      const mm = String(horaRaw.getMinutes()).padStart(2,"0");
+      return `${hh}:${mm}`;
+    }
+    const s = String(horaRaw);
+    const m = s.match(/(\d{1,2}):(\d{2})/);
+    if (m) return `${m[1].padStart(2,"0")}:${m[2]}`;
+    return s;
+  }
+
+  function parseFechaSolo(fecha) {
+    if (!fecha) return null;
+    if (fecha instanceof Date) return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+    const s = String(fecha).trim();
+    let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (m) return new Date(parseInt(m[3],10), parseInt(m[2],10)-1, parseInt(m[1],10));
+    m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (m) return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10));
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+    if (m) return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10));
+    const d = new Date(s);
+    if (!isNaN(d)) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    return null;
+  }
+
+  function hoyTrunc() {
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  function addDias(date, dias) {
+    const d = new Date(date);
+    d.setDate(d.getDate() + dias);
+    return d;
+  }
+
+  function obtenerDateTimeVuelo(v) {
+    const f = parseFechaSolo(v?.fecha);
+    if (!f) return null;
+    const h = formatearHora(v?.horaProgramada);
+    if (!h) return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+    const m = String(h).match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+    const hh = parseInt(m[1], 10);
+    const mm = parseInt(m[2], 10);
+    if (isNaN(hh) || isNaN(mm)) return new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59, 999);
+    return new Date(f.getFullYear(), f.getMonth(), f.getDate(), hh, mm, 0, 0);
+  }
+
+  function vueloEsFuturo(v) {
+    const dt = obtenerDateTimeVuelo(v);
+    if (!dt) return false;
+    return dt.getTime() >= (new Date()).getTime();
+  }
+
+  function normalizarTerminalGeneral(term){
+    const t = String(term || "").trim();
+    const up = t.toUpperCase();
+    if (up === "T1") return "Nacional";
+    if (up === "T2") return "Internacional";
+    if (t.toLowerCase() === "nacional") return "Nacional";
+    if (t.toLowerCase() === "internacional") return "Internacional";
+    return t;
+  }
+
+  function normalizarTipoAsistenciaPmr(tipo) {
+    const s = String(tipo || "").trim().toUpperCase();
+    if (!s) return "";
+    if (s === "WHC") return "WCHC";
+    if (s === "WHR") return "WCHR";
+    if (s === "WHS") return "WCHS";
+    return s;
+  }
+
+  function sameAirline(v){
+    const a = String(v?.aerolinea || "").trim().toLowerCase();
+    const key = PORTAL_AIRLINE_KEY.toLowerCase();
+    return a === PORTAL_AIRLINE.toLowerCase() || a.includes(key);
+  }
+
+  function withinRangeByFecha(f, desdeStr, hastaStr){
+    if (!f) return false;
+    if (desdeStr){
+      const d = parseFechaSolo(desdeStr);
+      if (d && f.getTime() < d.getTime()) return false;
+    }
+    if (hastaStr){
+      const h = parseFechaSolo(hastaStr);
+      if (h && f.getTime() > h.getTime()) return false;
+    }
+    return true;
+  }
+
+  /***************************************************************
+   * API: cargar datos
+   ***************************************************************/
+  async function cargarDatos(silencioso=false){
+    const apiStatus = document.getElementById("api-status");
+    const lastUpdate = document.getElementById("last-update");
+    apiStatus.textContent = "Conectando con API...";
+
+    try{
+      const res = await fetch(API_URL + "?action=listAll");
+      const text = await res.text();
+      let json = null;
+      try{ json = JSON.parse(text); } catch(e){ throw new Error("Respuesta no es JSON. Revisa permisos/deploy del WebApp."); }
+      if (!json.ok) throw new Error(json.error || "Error en listAll");
+
+      cacheVuelos = json.vuelos || [];
+      cachePasajeros = json.pasajeros || [];
+
+      apiStatus.textContent = "Conectado a la API";
+      const ahora = new Date();
+      lastUpdate.textContent = "Última actualización: " + ahora.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit"});
+
+      renderVistaActual();
+      iniciarAutoRefresh();
+    }catch(err){
+      console.error(err);
+      apiStatus.textContent = "Error al conectar con la API";
+      if(!silencioso) alert("Error al cargar datos: " + (err.message || err));
+    }
+  }
+
+  function iniciarAutoRefresh() {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    autoRefreshSeconds = 180;
+
+    autoRefreshInterval = setInterval(async () => {
+      autoRefreshSeconds--;
+      if (autoRefreshSeconds <= 0) {
+        autoRefreshSeconds = 180;
+        await cargarDatos(true);
+      }
+    }, 1000);
+  }
+
+  /***************************************************************
+   * VISTAS
+   ***************************************************************/
+  function renderVistaActual(){
+    const btnActivo = document.querySelector(".nav-btn.active");
+    const vista = btnActivo ? btnActivo.dataset.view : "vuelos";
+    if (vista === "vuelos") renderVistaVuelos();
+    else renderVistaPmr();
+  }
+
+  function renderVistaVuelos(){
+    document.getElementById("view-title").textContent = "Vuelos";
+
+    const tbody = document.getElementById("tbody-vuelos");
+    const empty = document.getElementById("empty-vuelos");
+    tbody.innerHTML = "";
+
+    const filtroNum = (document.getElementById("filtro-vuelo-num").value || "").trim().toLowerCase();
+    const desde = (document.getElementById("filtro-vuelos-desde").value || "").trim();
+    const hasta = (document.getElementById("filtro-vuelos-hasta").value || "").trim();
+
+    let vuelos = cacheVuelos.filter(v=>{
+      if (!sameAirline(v)) return false;
+
+      const f = parseFechaSolo(v.fecha);
+      if (!f) return false;
+
+      if (desde || hasta){
+        if (!withinRangeByFecha(f, desde, hasta)) return false;
+      }else{
+        const hoy = hoyTrunc();
+        const manana = addDias(hoy, 1);
+        const esHoy = f.getTime() === hoy.getTime();
+        const esManana = f.getTime() === manana.getTime();
+        if (!esHoy && !esManana) return false;
+        if (!vueloEsFuturo(v)) return false;
+      }
+
+      const num = String(v.numeroVuelo || "").toLowerCase();
+      if (filtroNum && !num.includes(filtroNum)) return false;
+
+      return true;
+    });
+
+    vuelos.sort((a,b)=>{
+      const da = obtenerDateTimeVuelo(a)?.getTime() || 9e15;
+      const db = obtenerDateTimeVuelo(b)?.getTime() || 9e15;
+      return da - db;
+    });
+
+    empty.style.display = vuelos.length ? "none" : "block";
+
+    vuelos.forEach(v=>{
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${v.idVuelo || ""}</td>
+        <td>${normalizarFechaExcel(v.fecha) || (v.fecha || "")}</td>
+        <td>${formatearHora(v.horaProgramada)}</td>
+        <td>${v.aerolinea || ""}</td>
+        <td>${v.numeroVuelo || ""}</td>
+        <td>${v.terminal || ""}</td>
+        <td>${v.puerta || ""}</td>
+        <td>${v.espigon || ""}</td>
+        <td>${v.cantPmr || 0}</td>
+        <td>${v.tipoServicio || ""}</td>
+        <td>${v.estadoVuelo || ""}</td>
+        <td>${v.observaciones || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function pmrKey(p){
+    const ymd = normalizarFechaExcel(p?.fechaVuelo || p?.fecha || "");
+    const num = String(p?.vuelo || "").trim();
+    return ymd ? `${num}||${ymd}` : num;
+  }
+
+  function getVueloByIdOrNumFecha(p){
+    const idv = p?.idVuelo || p?.id_vuelo || "";
+    if (idv){
+      const v = cacheVuelos.find(x => String(x.idVuelo) === String(idv));
+      if (v) return v;
+    }
+    const num = String(p?.vuelo || "").trim();
+    const ymd = normalizarFechaExcel(p?.fechaVuelo || p?.fecha || "");
+    if (num && ymd){
+      const v = cacheVuelos.find(x => String(x.numeroVuelo||"").trim()===num && normalizarFechaExcel(x.fecha)===ymd);
+      if (v) return v;
+    }
+    return null;
+  }
+
+  function renderVistaPmr(){
+    document.getElementById("view-title").textContent = "Pasajeros PMR";
+
+    const tbody = document.getElementById("tbody-pmr");
+    const empty = document.getElementById("empty-pmr");
+    const selVuelo = document.getElementById("filtro-pmr-vuelo");
+    const selEstado = document.getElementById("filtro-pmr-estado");
+
+    tbody.innerHTML = "";
+
+    const desde = (document.getElementById("filtro-pmr-desde").value || "").trim();
+    const hasta = (document.getElementById("filtro-pmr-hasta").value || "").trim();
+
+    let base = cachePasajeros.filter(p=>{
+      const v = getVueloByIdOrNumFecha(p);
+      if (!v) return false;
+      if (!sameAirline(v)) return false;
+
+      const f = parseFechaSolo(v.fecha);
+      if (!f) return false;
+
+      if (desde || hasta){
+        if (!withinRangeByFecha(f, desde, hasta)) return false;
+      }else{
+        const hoy = hoyTrunc();
+        const manana = addDias(hoy, 1);
+        const esHoy = f.getTime() === hoy.getTime();
+        const esManana = f.getTime() === manana.getTime();
+        if (!esHoy && !esManana) return false;
+        if (!vueloEsFuturo(v)) return false;
+      }
+
+      return true;
+    });
+
+    if (selVuelo){
+      const curr = selVuelo.value;
+      selVuelo.innerHTML = '<option value="">Todos</option>';
+      const keys = Array.from(new Set(base.map(p=>pmrKey(p)))).sort((a,b)=>String(a).localeCompare(String(b)));
+      keys.forEach(k=>{
+        const [num, ymd] = k.includes("||") ? k.split("||") : [k,""];
+        const opt = document.createElement("option");
+        opt.value = k;
+        opt.textContent = ymd ? `${num} | ${ymd}` : num;
+        selVuelo.appendChild(opt);
+      });
+      if (curr) selVuelo.value = curr;
+    }
+
+    if (selEstado){
+      const curr = selEstado.value;
+      selEstado.innerHTML = '<option value="">Todos</option>';
+      const est = Array.from(new Set(base.map(p=>String(p.estadoPmr||"").trim()).filter(Boolean))).sort();
+      est.forEach(e=>{
+        const opt = document.createElement("option");
+        opt.value = e;
+        opt.textContent = e;
+        selEstado.appendChild(opt);
+      });
+      if (curr) selEstado.value = curr;
+    }
+
+    const filtroKey = (selVuelo?.value || "").trim();
+    const filtroEstado = (selEstado?.value || "").trim().toLowerCase();
+
+    if (filtroKey) base = base.filter(p=>pmrKey(p)===filtroKey);
+    if (filtroEstado) base = base.filter(p=>String(p.estadoPmr||"").trim().toLowerCase()===filtroEstado);
+
+    base.sort((a,b)=>{
+      const va = getVueloByIdOrNumFecha(a);
+      const vb = getVueloByIdOrNumFecha(b);
+      const ta = obtenerDateTimeVuelo(va)?.getTime() || 9e15;
+      const tb = obtenerDateTimeVuelo(vb)?.getTime() || 9e15;
+      if (ta !== tb) return ta - tb;
+      return String(a.nombre||"").localeCompare(String(b.nombre||""));
+    });
+
+    empty.style.display = base.length ? "none" : "block";
+
+    base.forEach(p=>{
+      const v = getVueloByIdOrNumFecha(p);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${p.idPmr || ""}</td>
+        <td>${p.vuelo || ""}</td>
+        <td>${v ? normalizarFechaExcel(v.fecha) : normalizarFechaExcel(p.fechaVuelo || p.fecha || "")}</td>
+        <td>${v ? formatearHora(v.horaProgramada) : ""}</td>
+        <td>${v?.aerolinea || ""}</td>
+        <td>${v?.terminal || ""}</td>
+        <td>${p.nombre || ""}</td>
+        <td>${normalizarTipoAsistenciaPmr(p.tipoAsistencia || "")}</td>
+        <td>${p.edad || ""}</td>
+        <td>${p.rut || p.datoUnico || ""}</td>
+        <td>${p.estadoPmr || ""}</td>
+        <td>${p.observaciones || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  /***************************************************************
+   * MODAL
+   ***************************************************************/
+  function genId(prefix="blk"){
+    return prefix + "-" + Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+  }
+
+  function openModal(){
+    const backdrop = document.getElementById("modal-backdrop");
+    backdrop.classList.add("show");
+    backdrop.setAttribute("aria-hidden","false");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(){
+    const backdrop = document.getElementById("modal-backdrop");
+    backdrop.classList.remove("show");
+    backdrop.setAttribute("aria-hidden","true");
+    document.body.style.overflow = "";
+    document.getElementById("modal-msg").textContent = "";
+    document.getElementById("modal-msg").className = "msg";
+  }
+
+  function clearModal(){
+    state.flightBlocks = [];
+    const body = document.getElementById("modal-body");
+    body.innerHTML = "";
+    addFlightBlock();
+    setModalMsg("", "");
+  }
+
+  function setModalMsg(text, type){
+    const el = document.getElementById("modal-msg");
+    el.textContent = text || "";
+    el.className = "msg" + (type ? (" " + type) : "");
+  }
+
+  function addFlightBlock(prefill={}){
+    const id = genId("flight");
+    state.flightBlocks.push({ id });
+
+    const body = document.getElementById("modal-body");
+    const idx = state.flightBlocks.length;
+
+    const card = document.createElement("div");
+    card.className = "flight-card";
+    card.dataset.flightId = id;
+
+    card.innerHTML = `
+      <div class="flight-card-h">
+        <div class="title">Vuelo #${idx}</div>
+        <div class="btn-row">
+          <button class="btn-mini btn-danger" type="button" data-action="remove-flight" ${idx===1 ? "style='display:none;'" : ""}>Eliminar vuelo</button>
+        </div>
+      </div>
+
+      <div class="flight-card-b">
+        <div class="span2">
+          <label>Aerolínea
+            <input type="text" class="flight-aerolinea" value="${escapeHtml(PORTAL_AIRLINE)}" disabled />
+          </label>
+        </div>
+
+        <div>
+          <label>Vuelo <span style="color:var(--danger)">*</span>
+            <input type="text" class="flight-numero" value="${escapeHtml(prefill.numeroVuelo||"")}" placeholder="UA123" />
+          </label>
+        </div>
+
+        <div>
+          <label>Fecha <span style="color:var(--danger)">*</span>
+            <input type="date" class="flight-fecha" value="${escapeHtml(prefill.fecha||"")}" />
+          </label>
+        </div>
+
+        <div>
+          <label>Hora <span style="color:var(--danger)">*</span>
+            <input type="time" class="flight-hora" value="${escapeHtml(prefill.hora||"")}" />
+          </label>
+        </div>
+
+        <div>
+          <label>Terminal <span style="color:var(--danger)">*</span>
+            <select class="flight-terminal">
+              <option value="">— Seleccionar —</option>
+              <option value="Nacional">Nacional</option>
+              <option value="Internacional">Internacional</option>
+            </select>
+          </label>
+        </div>
+
+        <div>
+          <label>Tipo servicio
+            <select class="flight-tipo-servicio">
+              <option value="Embarque">Embarque</option>
+              <option value="Desembarque">Desembarque</option>
+            </select>
+          </label>
+        </div>
+
+        <div>
+          <label>Puerta (opcional)
+            <input type="text" class="flight-puerta" value="${escapeHtml(prefill.puerta||"")}" placeholder="1–13" />
+          </label>
+        </div>
+
+        <div>
+          <label>Espigón (opcional)
+            <input type="text" class="flight-espigon" value="${escapeHtml(prefill.espigon||"")}" placeholder="A–F" />
+          </label>
+        </div>
+
+        <div class="span6">
+          <label>Observaciones (opcional)
+            <input type="text" class="flight-obs" value="${escapeHtml(prefill.obs||"")}" placeholder="(opcional)" />
+          </label>
+        </div>
+      </div>
+
+      <div class="passengers-box">
+        <div class="passengers-top">
+          <div class="hint">
+            <b>Pasajeros</b>: el formulario parte con 1 fila obligatoria. Agrega más con <b>+ Pasajero</b>.
+          </div>
+          <div class="btn-row">
+            <button class="btn-pill secondary" type="button" data-action="add-pax">+ Pasajero</button>
+          </div>
+        </div>
+
+        <div class="pax-table">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:28%;">Nombre <span style="color:var(--danger)">*</span></th>
+                <th style="width:16%;">Tipo Asistencia <span style="color:var(--danger)">*</span></th>
+                <th style="width:10%;">Edad</th>
+                <th style="width:18%;">RUT / Pasaporte / Ticket</th>
+                <th>Observación pasajero</th>
+                <th style="width:1%;">Acción</th>
+              </tr>
+            </thead>
+            <tbody class="pax-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    body.appendChild(card);
+
+    if (prefill.terminal){
+      card.querySelector(".flight-terminal").value = normalizarTerminalGeneral(prefill.terminal);
+    }
+
+    card.addEventListener("click", (e)=>{
+      const act = e.target?.getAttribute?.("data-action") || "";
+      if (act === "add-pax") addPassengerRow(id);
+      if (act === "remove-flight") removeFlightBlock(id);
+    });
+
+    addPassengerRow(id, { required:true });
+    refreshFlightCardHeaders();
+  }
+
+  function refreshFlightCardHeaders(){
+    const cards = Array.from(document.querySelectorAll(".flight-card"));
+    cards.forEach((card, i)=>{
+      const title = card.querySelector(".flight-card-h .title");
+      if (title) title.textContent = `Vuelo #${i+1}`;
+      const btnRemove = card.querySelector('[data-action="remove-flight"]');
+      if (btnRemove) btnRemove.style.display = (cards.length <= 1) ? "none" : "inline-flex";
+    });
+  }
+
+  function removeFlightBlock(flightId){
+    const cards = Array.from(document.querySelectorAll(".flight-card"));
+    if (cards.length <= 1) return;
+    const card = document.querySelector(`.flight-card[data-flight-id="${flightId}"]`);
+    if (card) card.remove();
+    state.flightBlocks = state.flightBlocks.filter(b => b.id !== flightId);
+    refreshFlightCardHeaders();
+  }
+
+  function addPassengerRow(flightId){
+    const card = document.querySelector(`.flight-card[data-flight-id="${flightId}"]`);
+    if (!card) return;
+    const tbody = card.querySelector(".pax-tbody");
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td><input class="pax-input pax-nombre" type="text" placeholder="Nombre completo" /></td>
+      <td>
+        <select class="pax-input pax-tipo">
+          <option value="">— Seleccionar —</option>
+          <option value="WCHC">WCHC</option>
+          <option value="WCHR">WCHR</option>
+          <option value="WCHS">WCHS</option>
+          <option value="OTRO">OTRO</option>
+        </select>
+      </td>
+      <td><input class="pax-input pax-edad" type="number" min="0" placeholder="(opcional)" /></td>
+      <td><input class="pax-input pax-id" type="text" placeholder="(opcional)" /></td>
+      <td><input class="pax-input pax-obs" type="text" placeholder="(opcional)" /></td>
+      <td class="cell-actions">
+        <button class="btn-x" type="button" data-action="remove-pax">X</button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+
+    const refreshRemoveButtons = ()=>{
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      rows.forEach((row)=>{
+        const btn = row.querySelector('[data-action="remove-pax"]');
+        if (btn) btn.disabled = (rows.length <= 1);
+      });
+    };
+    refreshRemoveButtons();
+
+    tr.addEventListener("click", (e)=>{
+      const act = e.target?.getAttribute?.("data-action") || "";
+      if (act === "remove-pax"){
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+        if (rows.length <= 1) return;
+        tr.remove();
+        refreshRemoveButtons();
+      }
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  /***************************************************************
+   * SUBMIT
+   ***************************************************************/
+  function getFlightBlockData(card){
+    const aerolinea = PORTAL_AIRLINE;
+    const numeroVuelo = (card.querySelector(".flight-numero")?.value || "").trim();
+    const fecha = (card.querySelector(".flight-fecha")?.value || "").trim();
+    const hora = (card.querySelector(".flight-hora")?.value || "").trim();
+    const terminal = (card.querySelector(".flight-terminal")?.value || "").trim();
+    const tipoServicio = (card.querySelector(".flight-tipo-servicio")?.value || "").trim();
+    const puerta = (card.querySelector(".flight-puerta")?.value || "").trim();
+    const espigon = (card.querySelector(".flight-espigon")?.value || "").trim();
+    const obs = (card.querySelector(".flight-obs")?.value || "").trim();
+
+    const paxRows = Array.from(card.querySelectorAll(".pax-tbody tr"));
+    const pasajeros = paxRows.map(row=>{
+      const nombre = (row.querySelector(".pax-nombre")?.value || "").trim();
+      const tipoAsisRaw = (row.querySelector(".pax-tipo")?.value || "").trim();
+      const tipoAsistencia = normalizarTipoAsistenciaPmr(tipoAsisRaw === "OTRO" ? "" : tipoAsisRaw);
+      const edad = (row.querySelector(".pax-edad")?.value || "").trim();
+      const id = (row.querySelector(".pax-id")?.value || "").trim();
+      const obsP = (row.querySelector(".pax-obs")?.value || "").trim();
+      return { nombre, tipoAsistencia, edad, id, obsP };
+    });
+
+    return { aerolinea, numeroVuelo, fecha, hora, terminal, tipoServicio, puerta, espigon, obs, pasajeros };
+  }
+
+  function validarBloque(b){
+    const errs = [];
+    if (!b.numeroVuelo) errs.push("Vuelo");
+    if (!b.fecha) errs.push("Fecha");
+    if (!b.hora) errs.push("Hora");
+    if (!b.terminal) errs.push("Terminal");
+    if (!b.pasajeros || b.pasajeros.length < 1) errs.push("Al menos 1 pasajero");
+    (b.pasajeros || []).forEach((p, i)=>{
+      if (!p.nombre) errs.push(`Pasajero #${i+1}: Nombre`);
+      if (!p.tipoAsistencia) errs.push(`Pasajero #${i+1}: Tipo Asistencia`);
+    });
+    return errs;
+  }
+
+  async function apiCreateVuelo(b){
+    const params = new URLSearchParams();
+    params.append("action", "createVuelo");
+    params.append("fecha", b.fecha);
+    params.append("horaProgramada", b.hora);
+    params.append("aerolinea", b.aerolinea);
+    params.append("numeroVuelo", b.numeroVuelo);
+    params.append("terminal", b.terminal);
+
+    if (b.puerta) params.append("puerta", b.puerta);
+    if (b.espigon) params.append("espigon", b.espigon);
+    if (b.tipoServicio) params.append("tipoServicio", b.tipoServicio);
+
+    params.append("cantPmr", String((b.pasajeros || []).length));
+
+    const obsFinal = (b.obs ? (b.obs + " | ") : "") + "[AIRLINE_PORTAL]";
+    params.append("observaciones", obsFinal);
+
+    const res = await fetch(API_URL + "?" + params.toString());
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Error al crear vuelo");
+    return json;
+  }
+
+  async function apiCreatePasajero(b, idVuelo, p){
+    const params = new URLSearchParams();
+    params.append("action", "crearPasajero");
+
+    params.append("vuelo", b.numeroVuelo);
+    params.append("idVuelo", idVuelo);
+    params.append("fechaVuelo", b.fecha);
+
+    params.append("nombre", p.nombre);
+    params.append("tipoAsistencia", p.tipoAsistencia);
+
+    if (p.edad) params.append("edad", p.edad);
+    if (p.id) params.append("rut", p.id);
+
+    const obs = [];
+    if (p.id) obs.push(`ID:${p.id}`);
+    if (p.obsP) obs.push(p.obsP);
+    const obsFinal = obs.length ? (obs.join(" | ") + " | [AIRLINE_PORTAL]") : "[AIRLINE_PORTAL]";
+    params.append("observaciones", obsFinal);
+
+    const res = await fetch(API_URL + "?" + params.toString());
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Error al crear pasajero");
+    return json;
+  }
+
+  async function submitAll(){
+    const btn = document.getElementById("btn-submit-all");
+    btn.disabled = true;
+    setModalMsg("Validando formulario...", "warn");
+
+    try{
+      const cards = Array.from(document.querySelectorAll(".flight-card"));
+      const bloques = cards.map(getFlightBlockData);
+
+      const errors = [];
+      bloques.forEach((b, idx)=>{
+        const e = validarBloque(b);
+        if (e.length) errors.push(`Vuelo #${idx+1}: faltan ${e.join(", ")}`);
+      });
+      if (errors.length){
+        setModalMsg(errors.join(" · "), "err");
+        btn.disabled = false;
+        return;
+      }
+
+      let totalVuelosOk = 0;
+      let totalPaxOk = 0;
+
+      for (let i=0; i<bloques.length; i++){
+        const b = bloques[i];
+        setModalMsg(`Guardando Vuelo #${i+1} (${b.numeroVuelo} ${b.fecha})...`, "warn");
+
+        const vueloResp = await apiCreateVuelo(b);
+        const idVuelo = vueloResp.idVuelo || vueloResp.id_vuelo || vueloResp.vueloId || "";
+        if (!idVuelo) throw new Error(`No se recibió idVuelo al crear el Vuelo #${i+1}.`);
+
+        totalVuelosOk++;
+
+        for (let j=0; j<b.pasajeros.length; j++){
+          setModalMsg(`Guardando Vuelo #${i+1}: pasajero ${j+1}/${b.pasajeros.length}...`, "warn");
+          await apiCreatePasajero(b, idVuelo, b.pasajeros[j]);
+          totalPaxOk++;
+        }
+      }
+
+      setModalMsg(`Guardado completado: Vuelos OK=${totalVuelosOk}, Pasajeros OK=${totalPaxOk}.`, "ok");
+      await cargarDatos(true);
+      setTimeout(()=> closeModal(), 700);
+
+    }catch(err){
+      console.error(err);
+      setModalMsg("Error al guardar: " + (err.message || err), "err");
+      btn.disabled = false;
+    }
+  }
+
+  /***************************************************************
+   * UI / NAV
+   ***************************************************************/
+  function switchView(view){
+    document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelector(`.nav-btn[data-view="${view}"]`)?.classList.add("active");
+
+    document.getElementById("view-vuelos").style.display = (view==="vuelos") ? "block" : "none";
+    document.getElementById("view-pmr").style.display = (view==="pmr") ? "block" : "none";
+
+    renderVistaActual();
+  }
+
+  /***************************************************************
+   * EVENTS
+   ***************************************************************/
+  document.addEventListener("DOMContentLoaded", ()=>{
+    document.getElementById("chip-airline-text").textContent = PORTAL_AIRLINE;
+
+    document.querySelectorAll(".nav-btn").forEach(btn=>{
+      btn.addEventListener("click", ()=> switchView(btn.dataset.view));
+    });
+
+    document.getElementById("filtro-vuelo-num").addEventListener("input", renderVistaVuelos);
+
+    document.getElementById("filtro-vuelos-desde").addEventListener("change", ()=>{
+      document.getElementById("chip-scope-text").textContent = "Rango personalizado";
+      renderVistaVuelos();
+    });
+    document.getElementById("filtro-vuelos-hasta").addEventListener("change", ()=>{
+      document.getElementById("chip-scope-text").textContent = "Rango personalizado";
+      renderVistaVuelos();
+    });
+
+    document.getElementById("filtro-pmr-desde").addEventListener("change", ()=>{
+      document.getElementById("chip-scope-text").textContent = "Rango personalizado";
+      renderVistaPmr();
+    });
+    document.getElementById("filtro-pmr-hasta").addEventListener("change", ()=>{
+      document.getElementById("chip-scope-text").textContent = "Rango personalizado";
+      renderVistaPmr();
+    });
+
+    document.getElementById("btn-vuelos-hoymanana").addEventListener("click", ()=>{
+      document.getElementById("filtro-vuelos-desde").value = "";
+      document.getElementById("filtro-vuelos-hasta").value = "";
+      document.getElementById("chip-scope-text").textContent = "Hoy y mañana (futuro)";
+      renderVistaVuelos();
+    });
+
+    document.getElementById("btn-pmr-hoymanana").addEventListener("click", ()=>{
+      document.getElementById("filtro-pmr-desde").value = "";
+      document.getElementById("filtro-pmr-hasta").value = "";
+      document.getElementById("chip-scope-text").textContent = "Hoy y mañana (futuro)";
+      renderVistaPmr();
+    });
+
+    document.getElementById("filtro-pmr-vuelo").addEventListener("change", renderVistaPmr);
+    document.getElementById("filtro-pmr-estado").addEventListener("change", renderVistaPmr);
+
+    document.getElementById("btn-actualizar").addEventListener("click", ()=>cargarDatos());
+
+    document.getElementById("btn-open-modal").addEventListener("click", ()=>{
+      clearModal();
+      openModal();
+    });
+    document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+    document.getElementById("modal-backdrop").addEventListener("click", (e)=>{
+      if (e.target && e.target.id === "modal-backdrop") closeModal();
+    });
+    document.addEventListener("keydown", (e)=>{
+      if (e.key === "Escape"){
+        const isOpen = document.getElementById("modal-backdrop").classList.contains("show");
+        if (isOpen) closeModal();
+      }
+    });
+
+    document.getElementById("btn-add-flight").addEventListener("click", ()=> addFlightBlock());
+    document.getElementById("btn-clear-modal").addEventListener("click", clearModal);
+    document.getElementById("btn-submit-all").addEventListener("click", submitAll);
+
+    cargarDatos();
+  });
+</script>
+</body>
+</html>
