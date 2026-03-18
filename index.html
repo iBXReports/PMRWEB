@@ -614,8 +614,127 @@
     }
 
     /* =========================
-       ✅ Vuelos: diferenciación más notoria
+       ✅ Vuelos: tabla moderna
        ========================= */
+    #view-vuelos table {
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(15,23,42,.06);
+      overflow: hidden;
+    }
+    #view-vuelos thead th {
+      background: linear-gradient(180deg, #1e3a5f, #1e40af);
+      color: #e0e7ff;
+      font-size: 10px;
+      padding: 10px 10px;
+      border-bottom: none;
+      letter-spacing: .1em;
+    }
+    #view-vuelos thead th + th {
+      border-left: 1px solid rgba(255,255,255,.1);
+    }
+    #view-vuelos tbody tr {
+      transition: box-shadow .15s, background .15s;
+    }
+    #view-vuelos tbody tr:hover {
+      box-shadow: inset 0 0 0 1px rgba(30,64,175,.15);
+      filter: none;
+      background: #f8faff;
+    }
+    #view-vuelos td {
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .badge-term {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .badge-term-nac {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+    }
+    .badge-term-int {
+      background: #f3e8ff;
+      color: #7c3aed;
+      border: 1px solid #c4b5fd;
+    }
+    .badge-term-other {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    /* PMR clickable badge */
+    .pmr-count-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: linear-gradient(135deg, #fef3c7, #fde68a);
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform .1s, box-shadow .15s;
+      position: relative;
+    }
+    .pmr-count-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 2px 8px rgba(245,158,11,.3);
+    }
+    .pmr-count-btn .pmr-eye {
+      font-size: 11px;
+    }
+    /* PMR popover */
+    .vuelos-pmr-popover {
+      position: fixed;
+      z-index: 999;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(15,23,42,.2);
+      border: 1px solid var(--border);
+      min-width: 300px;
+      max-width: 420px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 14px;
+      animation: pmrPopIn .15s ease;
+    }
+    @keyframes pmrPopIn {
+      from { opacity: 0; transform: translateY(6px) scale(.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .vuelos-pmr-popover .pop-title {
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #1e40af;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .vuelos-pmr-popover .pop-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 11px;
+    }
+    .vuelos-pmr-popover .pop-row:last-child {
+      border-bottom: none;
+    }
+
     .row-embarque td {
       background: var(--emb);
     }
@@ -1362,19 +1481,12 @@
                 <th>ID Vuelo</th>
                 <th>Fecha</th>
                 <th>Hora</th>
-                <th>Hora ideal</th>
                 <th>Aerolínea</th>
                 <th>N° Vuelo</th>
                 <th>Terminal</th>
-                <th>Puerta</th>
-                <th>Espigón</th>
-                <th>Cant PMR</th>
-                <th>Tipo servicio</th>
-                <th>Estado</th>
-                <th>Tipo</th>
-                <th>Origen</th>
-                <th>Destino</th>
-                <th>Obs</th>
+                <th>PMR</th>
+                <th>Servicio</th>
+                <th>Ruta</th>
               </tr>
             </thead>
             <tbody id="tbody-vuelos"></tbody>
@@ -2700,6 +2812,63 @@
       }
     }
 
+    // ========== LOGO AEROLÍNEAS ==========
+    function obtenerLogoAerolinea(aerolinea, numeroVuelo) {
+      const aero = (aerolinea || '').trim().toLowerCase();
+      const num = (numeroVuelo || '').trim().toUpperCase();
+      let logo = '';
+
+      if (aero.includes('latam') || aero.includes('lan')) {
+        logo = 'img/LATAM.jpg';
+      } else if (aero.includes('delta')) {
+        logo = 'img/delta.jpg';
+      } else if (aero.includes('air canada') || aero.includes('aircanada')) {
+        logo = 'img/aircanada.jpg';
+      } else if (aero.includes('air france') || aero.includes('airfrance')) {
+        logo = 'img/airfrance.jpg';
+      } else if (aero.includes('klm')) {
+        logo = 'img/klm.jpg';
+      } else if (aero.includes('boliviana') || aero.includes('boa')) {
+        logo = 'img/boa.jpg';
+      } else if (aero.includes('copa')) {
+        logo = 'img/copa.jpg';
+      } else if (aero.includes('argentina')) {
+        logo = 'img/argentinas.jpg';
+      } else if (aero.includes('qantas') || aero.includes('quantas')) {
+        logo = 'img/qantas.jpg';
+      } else if (aero.includes('iberia') || aero.includes('level')) {
+        // Determinar por número de vuelo
+        if (num.startsWith('LL')) {
+          logo = 'img/level.jpg';
+        } else {
+          logo = 'img/iberia.jpg';
+        }
+      } else if (aero.includes('british') || aero.includes('airways')) {
+        logo = 'img/british.jpg';
+      }
+
+      // Fallback: intentar deducir por prefijo de número de vuelo
+      if (!logo) {
+        if (num.startsWith('LA') || num.startsWith('4C')) logo = 'img/LATAM.jpg';
+        else if (num.startsWith('DL')) logo = 'img/delta.jpg';
+        else if (num.startsWith('AC')) logo = 'img/aircanada.jpg';
+        else if (num.startsWith('AF')) logo = 'img/airfrance.jpg';
+        else if (num.startsWith('KL')) logo = 'img/klm.jpg';
+        else if (num.startsWith('OB')) logo = 'img/boa.jpg';
+        else if (num.startsWith('CM')) logo = 'img/copa.jpg';
+        else if (num.startsWith('AR')) logo = 'img/argentinas.jpg';
+        else if (num.startsWith('QF')) logo = 'img/qantas.jpg';
+        else if (num.startsWith('IB')) logo = 'img/iberia.jpg';
+        else if (num.startsWith('LL')) logo = 'img/level.jpg';
+        else if (num.startsWith('BA')) logo = 'img/british.jpg';
+      }
+
+      if (logo) {
+        return `<img src="${logo}" alt="${aerolinea || ''}" title="${aerolinea || ''}" style="width:130px;height:50px;object-fit:contain;display:block;" onerror="this.outerHTML='${(aerolinea || '').replace(/'/g, '\\&#39;')}'" />`;
+      }
+      return aerolinea || '';
+    }
+
     function renderVistaVuelos() {
       const tbody = document.getElementById("tbody-vuelos");
       const empty = document.getElementById("empty-vuelos");
@@ -2760,25 +2929,11 @@
         const tr = document.createElement("tr");
         tr.className = clasesFilaVuelo(v);
 
-        const horaIdeal = calcularHoraIdealAsignacion(v);
-        const badgeCls = badgeClassIdeal(v);
-        const badgeHtml = horaIdeal ? `<span class="${badgeCls}">${horaIdeal}</span>` : "";
-
         // Flight Filter Button logic
         const btnVuelo = `<button onclick="filtrarPmrDesdeVuelo('${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
-                            class="btn-link-vuelo" title="Ver pasajeros de este vuelo" style="background:none; border:none; color:inherit; font:inherit; cursor:pointer; text-decoration:underline;">
+                            class="btn-link-vuelo" title="Ver pasajeros de este vuelo" style="background:none; border:none; color:#1e40af; font:inherit; cursor:pointer; font-weight:800; font-size:13px;">
                             ${v.numeroVuelo || ""}
                           </button>`;
-
-        // Master Assign Button (only if PMRs > 0)
-        let cellPmr = `${v.cantPmr || 0}`;
-        if ((v.cantPmr || 0) > 0) {
-          cellPmr += ` <button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
-                        style="margin-left:6px;padding:2px 6px;border-radius:4px;border:none;background:#2563eb;color:white;font-size:10px;cursor:pointer;vertical-align:middle;" 
-                        title="Asignar Maestro y Apoyos">
-                        Asignar
-                        </button>`;
-        }
 
         // Airplane Icon for Assignment (visible only if PMRs > 0)
         const iconoAsignar = (v.cantPmr || 0) > 0
@@ -2791,31 +2946,163 @@
               </button>`
           : `<span style="opacity:0.2;font-size:18px;padding:4px;">✈️</span>`;
 
+        // Terminal badge
+        const termNorm = normalizarTerminalGeneral(v.terminal);
+        const isNac = termNorm.toLowerCase() === 'nacional';
+        const isInt = termNorm.toLowerCase() === 'internacional';
+        let termBadge;
+        if (isNac) {
+          termBadge = `<span class="badge-term badge-term-nac">🟢 NAC</span>`;
+        } else if (isInt) {
+          termBadge = `<span class="badge-term badge-term-int">🟣 INT</span>`;
+        } else {
+          termBadge = `<span class="badge-term badge-term-other">${termNorm || v.terminal || ''}</span>`;
+        }
+
+        // PMR count — clickable badge
+        const pmrCount = v.cantPmr || 0;
+        const pmrUid = `pmr-pop-${v.idVuelo}`;
+        let cellPmr;
+        if (pmrCount > 0) {
+          cellPmr = `<button class="pmr-count-btn" data-id-vuelo="${v.idVuelo}" data-num-vuelo="${v.numeroVuelo}" data-fecha="${normalizarFechaExcel(v.fecha)}" title="Ver pasajeros PMR">
+                       <span class="pmr-eye">👁</span> ${pmrCount}
+                     </button>`;
+        } else {
+          cellPmr = `<span style="color:#9ca3af;font-weight:700;">0</span>`;
+        }
+
+        // Servicio badge
+        const ts = (v.tipoServicio || '').toLowerCase().trim();
+        let servBadge;
+        if (ts === 'embarque') {
+          servBadge = `<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid #93c5fd;">EMBARQUE</span>`;
+        } else if (ts === 'desembarque') {
+          servBadge = `<span style="background:#fce7f3;color:#be185d;font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid #f9a8d4;">ARRIBO</span>`;
+        } else {
+          servBadge = v.tipoServicio || '';
+        }
+
+        // Ruta
+        const ruta = (v.origen && v.destino) ? `${v.origen} → ${v.destino}` : (v.origen || v.destino || '');
+
         tr.innerHTML = `
         <td style="text-align:center;">${iconoAsignar}</td>
-        <td>${v.idVuelo || ""}</td>
+        <td style="font-weight:700;color:#475569;">${v.idVuelo || ""}</td>
         <td>${normalizarFechaExcel(v.fecha) || (v.fecha || "")}</td>
-        <td>${formatearHora(v.horaProgramada)}</td>
-        <td>${badgeHtml}</td>
-        <td>${v.aerolinea || ""}</td>
+        <td style="font-weight:800;font-size:13px;">${formatearHora(v.horaProgramada)}</td>
+        <td>${obtenerLogoAerolinea(v.aerolinea, v.numeroVuelo)}</td>
         <td>${btnVuelo}</td>
-        <td>${v.terminal || ""}</td>
-        <td>${v.puerta || ""}</td>
-        <td>${v.espigon || ""}</td>
-        <td>${cellPmr}</td>
-        <td>${v.tipoServicio || ""}</td>
-        <td>${v.estadoVuelo || ""}</td>
-        <td>${v.tipo || v.tipoAvion || ""}</td>
-        <td>${v.origen || ""}</td>
-        <td>${v.destino || ""}</td>
-        <td>${v.observaciones || ""}</td>
+        <td style="text-align:center;">${termBadge}</td>
+        <td style="text-align:center;">${cellPmr}</td>
+        <td style="text-align:center;">${servBadge}</td>
+        <td style="font-size:11px;color:#374151;">${ruta}</td>
       `;
         tbody.appendChild(tr);
+      });
+
+      // Wire PMR popover clicks
+      tbody.querySelectorAll('.pmr-count-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const idVuelo = btn.dataset.idVuelo;
+          const numVuelo = btn.dataset.numVuelo;
+          const fecha = btn.dataset.fecha;
+          mostrarVuelosPmrPopover(btn, idVuelo, numVuelo, fecha);
+        });
       });
 
       document.getElementById("view-title").textContent = "Vuelos";
       document.getElementById("chip-info-vista").innerHTML =
         `<span class="chip-label">Vuelos:</span><span>Hoy y mañana (solo próximas horas, con PMR en espera)</span>`;
+    }
+
+    function cerrarVuelosPmrPopover() {
+      const existing = document.getElementById('vuelos-pmr-popover');
+      if (existing) existing.remove();
+      document.removeEventListener('click', _closePmrPop);
+    }
+    function _closePmrPop(e) {
+      const pop = document.getElementById('vuelos-pmr-popover');
+      if (pop && !pop.contains(e.target) && !e.target.closest('.pmr-count-btn')) {
+        cerrarVuelosPmrPopover();
+      }
+    }
+
+    function mostrarVuelosPmrPopover(btnEl, idVuelo, numVuelo, fecha) {
+      // Close existing
+      cerrarVuelosPmrPopover();
+
+      // Find PMRs
+      const pmrsVuelo = (cachePasajeros || []).filter(p => {
+        const pIdVuelo = String(p.idVuelo || p.id_vuelo || '').trim();
+        if (pIdVuelo && pIdVuelo === String(idVuelo)) return true;
+        const pVuelo = String(p.vuelo || '').trim();
+        if (!pVuelo || pVuelo !== numVuelo) return false;
+        const pFecha = normalizarFechaExcel(p.fechaVuelo || p.fecha || p.fechaVueloPmr || p.fecha_vuelo || '');
+        if (fecha && pFecha && pFecha === fecha) return true;
+        return false;
+      });
+
+      pmrsVuelo.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')));
+
+      const pop = document.createElement('div');
+      pop.id = 'vuelos-pmr-popover';
+      pop.className = 'vuelos-pmr-popover';
+
+      if (pmrsVuelo.length === 0) {
+        pop.innerHTML = `
+          <div class="pop-title">♿ Pasajeros PMR — ${numVuelo}</div>
+          <div style="text-align:center;color:#9ca3af;font-size:11px;padding:10px 0;font-style:italic;">Sin pasajeros PMR registrados</div>
+        `;
+      } else {
+        let rows = '';
+        pmrsVuelo.forEach(p => {
+          const tipoRaw = normalizarTipoAsistenciaPmr(p.tipoAsistencia || '');
+          const tipoUpper = tipoRaw.toUpperCase();
+          let bBg = '#f3f4f6', bColor = '#374151', bBrd = '#d1d5db';
+          if (tipoUpper === 'WCHC') { bBg = '#fee2e2'; bColor = '#991b1b'; bBrd = '#fca5a5'; }
+          else if (tipoUpper === 'WCHR') { bBg = '#fef3c7'; bColor = '#92400e'; bBrd = '#fcd34d'; }
+          else if (tipoUpper === 'WCHS') { bBg = '#dbeafe'; bColor = '#1e3a8a'; bBrd = '#93c5fd'; }
+
+          const estadoHtml = p.estadoPmr
+            ? `<span style="font-size:9px;padding:2px 5px;border-radius:999px;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;font-weight:700;">${p.estadoPmr}</span>`
+            : '';
+
+          rows += `
+            <div class="pop-row">
+              <span style="font-weight:800;color:#1e40af;min-width:36px;">${p.idPmr || ''}</span>
+              <span style="flex:1;font-weight:600;color:#111827;">${p.nombre || '<em style=color:#9ca3af>Sin nombre</em>'}</span>
+              <span style="background:${bBg};color:${bColor};border:1px solid ${bBrd};font-size:9px;font-weight:800;padding:2px 6px;border-radius:999px;">${tipoRaw || '—'}</span>
+              ${estadoHtml}
+            </div>
+          `;
+        });
+
+        pop.innerHTML = `
+          <div class="pop-title">♿ ${pmrsVuelo.length} Pasajero${pmrsVuelo.length !== 1 ? 's' : ''} PMR — ${numVuelo} (${fecha})</div>
+          ${rows}
+        `;
+      }
+
+      document.body.appendChild(pop);
+
+      // Position near button
+      const rect = btnEl.getBoundingClientRect();
+      let top = rect.bottom + 6;
+      let left = rect.left;
+
+      // Ensure within viewport
+      const popW = pop.offsetWidth || 340;
+      const popH = pop.offsetHeight || 200;
+      if (left + popW > window.innerWidth - 16) left = window.innerWidth - popW - 16;
+      if (left < 8) left = 8;
+      if (top + popH > window.innerHeight - 16) top = rect.top - popH - 6;
+
+      pop.style.top = top + 'px';
+      pop.style.left = left + 'px';
+
+      // Close on outside click (delayed to avoid immediate close)
+      setTimeout(() => document.addEventListener('click', _closePmrPop), 50);
     }
 
     function renderVistaPmr() {
@@ -3407,17 +3694,35 @@
 
         groupedByHour[hour].forEach(v => {
            const card = document.createElement("div");
-           card.style.cssText = "min-width:260px; border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:6px; flex-shrink:0;";
+           card.style.cssText = "min-width:280px; border:1px solid #e5e7eb; border-radius:12px; padding:12px; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; flex-direction:column; gap:6px; flex-shrink:0;";
            
            const ts = v.tipoServicio || "";
            const isEmb = ts.toLowerCase() === "embarque";
            const tsColor = isEmb ? "#dbeafe" : "#fce7f3";
            const tsTextColor = isEmb ? "#1e40af" : "#be185d";
 
+           // Badge terminal: Nacional = verde / Internacional = morado
+           const termNorm = normalizarTerminalGeneral(v.terminal);
+           const isNac = termNorm.toLowerCase() === "nacional";
+           const isInt = termNorm.toLowerCase() === "internacional";
+           let termBadge = "";
+           if (isNac) {
+             termBadge = `<span style="background:#dcfce7; color:#15803d; font-size:9px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid #86efac;">NAC</span>`;
+           } else if (isInt) {
+             termBadge = `<span style="background:#f3e8ff; color:#7c3aed; font-size:9px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid #c4b5fd;">INT</span>`;
+           } else if (termNorm) {
+             termBadge = `<span style="background:#f1f5f9; color:#475569; font-size:9px; font-weight:800; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1;">${termNorm}</span>`;
+           }
+
+           const cardUid = `tl-card-${v.idVuelo}-${Math.random().toString(36).substr(2,5)}`;
+
            card.innerHTML = `
              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; border-bottom:1px solid #f3f4f6; padding-bottom:4px; margin-bottom:4px;">
                 <span style="font-weight:700; color:#4b5563;">${normalizarFechaExcel(v.fecha) || ""}</span>
-                <span style="background:${tsColor}; color:${tsTextColor}; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px;">${ts}</span>
+                <div style="display:flex; gap:4px; align-items:center;">
+                  ${termBadge}
+                  <span style="background:${tsColor}; color:${tsTextColor}; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px;">${ts}</span>
+                </div>
              </div>
              
              <div style="font-size:16px; font-weight:900; color:#111827;">${v.aerolinea || ""} ${v.numeroVuelo || ""}</div>
@@ -3425,18 +3730,33 @@
              <div style="font-size:13px; color:#374151; display:flex; align-items:center; gap:8px;">
                <span><b style="color:#6b7280;">Programada:</b> ${formatearHora(v.horaProgramada) || "--"}</span>
              </div>
-             <div style="font-size:13px; color:#374151; display:flex; align-items:center; gap:8px;">
-               <span><b style="color:#eab308;">Ideal:</b> ${formatearHora(v.horaIdeal) || "--"}</span>
-             </div>
 
              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:8px; border-top:1px dashed #e5e7eb;">
                <div style="font-size:12px; font-weight:700;"><span style="color:#dc2626; font-size:14px;">${v.cantPmr || 0}</span> PMR</div>
-               <button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
-                       style="background:#1e40af; color:#fff; border:none; padding:4px 12px; font-size:11px; font-weight:800; border-radius:999px; cursor:pointer; box-shadow:0 2px 4px rgba(30,64,175,0.3);">
-                  Asignar PMR
-               </button>
+               <div style="display:flex; gap:6px;">
+                 <button class="tl-btn-ver-pmr" data-uid="${cardUid}"
+                         style="background:#f8fafc; color:#475569; border:1px solid #e2e8f0; padding:4px 10px; font-size:10px; font-weight:800; border-radius:999px; cursor:pointer; transition:all .15s;">
+                   👥 Ver
+                 </button>
+                 <button onclick="iniciarAsignacionVuelo('${v.idVuelo}', '${v.numeroVuelo}', '${normalizarFechaExcel(v.fecha)}')" 
+                        style="background:#1e40af; color:#fff; border:none; padding:4px 12px; font-size:11px; font-weight:800; border-radius:999px; cursor:pointer; box-shadow:0 2px 4px rgba(30,64,175,0.3);">
+                   Asignar PMR
+                 </button>
+               </div>
              </div>
+
+             <div id="${cardUid}" style="display:none; margin-top:6px; padding-top:8px; border-top:1px solid #e5e7eb;"></div>
            `;
+
+           // Wire up the "Ver Pasajeros" button
+           const btnVer = card.querySelector('.tl-btn-ver-pmr');
+           if (btnVer) {
+             btnVer.addEventListener('click', (e) => {
+               e.stopPropagation();
+               toggleTimelinePmr(v, cardUid, btnVer);
+             });
+           }
+
            cardRow.appendChild(card);
         });
 
@@ -3447,6 +3767,76 @@
       document.getElementById("view-title").textContent = "Timeline";
       document.getElementById("chip-info-vista").innerHTML =
         `<span class="chip-label">Timeline:</span><span>Vista cronológica horizontal por hora</span>`;
+    }
+
+    function toggleTimelinePmr(vuelo, cardUid, btn) {
+      const container = document.getElementById(cardUid);
+      if (!container) return;
+
+      // Toggle visibility
+      if (container.style.display !== 'none') {
+        container.style.display = 'none';
+        btn.innerHTML = '👥 Ver';
+        btn.style.background = '#f8fafc';
+        btn.style.color = '#475569';
+        return;
+      }
+
+      // Find PMRs for this flight
+      const idVuelo = String(vuelo.idVuelo || '');
+      const numVuelo = String(vuelo.numeroVuelo || '').trim();
+      const fechaVuelo = normalizarFechaExcel(vuelo.fecha);
+
+      const pmrsVuelo = (cachePasajeros || []).filter(p => {
+        const pIdVuelo = String(p.idVuelo || p.id_vuelo || '').trim();
+        if (pIdVuelo && pIdVuelo === idVuelo) return true;
+
+        const pVuelo = String(p.vuelo || '').trim();
+        if (!pVuelo || pVuelo !== numVuelo) return false;
+
+        const pFecha = normalizarFechaExcel(p.fechaVuelo || p.fecha || p.fechaVueloPmr || p.fecha_vuelo || '');
+        if (fechaVuelo && pFecha && pFecha === fechaVuelo) return true;
+
+        return false;
+      });
+
+      pmrsVuelo.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || '')));
+
+      if (pmrsVuelo.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center; color:#9ca3af; font-size:11px; padding:6px 0; font-style:italic;">
+            Sin pasajeros PMR registrados
+          </div>
+        `;
+      } else {
+        let rows = '';
+        pmrsVuelo.forEach(p => {
+          const tipoRaw = normalizarTipoAsistenciaPmr(p.tipoAsistencia || '');
+          const tipoUpper = tipoRaw.toUpperCase();
+          let badgeBg = '#f3f4f6'; let badgeColor = '#374151'; let badgeBorder = '#d1d5db';
+          if (tipoUpper === 'WCHC') { badgeBg = '#fee2e2'; badgeColor = '#991b1b'; badgeBorder = '#fca5a5'; }
+          else if (tipoUpper === 'WCHR') { badgeBg = '#fef3c7'; badgeColor = '#92400e'; badgeBorder = '#fcd34d'; }
+          else if (tipoUpper === 'WCHS') { badgeBg = '#dbeafe'; badgeColor = '#1e3a8a'; badgeBorder = '#93c5fd'; }
+
+          rows += `
+            <div style="display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid #f3f4f6; font-size:11px;">
+              <span style="font-weight:800; color:#1e40af; min-width:40px;">${p.idPmr || ''}</span>
+              <span style="flex:1; font-weight:600; color:#111827;">${p.nombre || '<em style=color:#9ca3af>Sin nombre</em>'}</span>
+              <span style="background:${badgeBg}; color:${badgeColor}; border:1px solid ${badgeBorder}; font-size:9px; font-weight:800; padding:2px 6px; border-radius:999px;">${tipoRaw || '—'}</span>
+            </div>
+          `;
+        });
+
+        container.innerHTML = `
+          <div style="font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; color:#1e40af; margin-bottom:4px;">♿ ${pmrsVuelo.length} Pasajero${pmrsVuelo.length !== 1 ? 's' : ''} PMR</div>
+          ${rows}
+        `;
+      }
+
+      container.style.display = 'block';
+      btn.innerHTML = '👥 Ocultar';
+      btn.style.background = '#e0e7ff';
+      btn.style.color = '#3730a3';
     }
 
     function exportarAgentes(formato) {
