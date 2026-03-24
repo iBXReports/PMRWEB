@@ -8,6 +8,8 @@
 
   <!-- Librería para leer Excel (.xlsx / .xls) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root {
@@ -1331,7 +1333,8 @@
         <div class="sidebar-section-title">Vistas</div>
         <div class="nav">
           <button class="nav-btn" data-view="dashboard" data-color="indigo"><span class="nav-icon">📊</span>Dashboard</button>
-          <button class="nav-btn active" data-view="vuelos" data-color="blue"><span class="nav-icon">✈️</span>Vuelos</button>
+          <button class="nav-btn" data-view="vuelos" data-color="blue"><span class="nav-icon">✈️</span>Vuelos</button>
+          <button class="nav-btn" data-view="tramos" data-color="sky"><span class="nav-icon">🛣️</span>TRAMOS</button>
           <button class="nav-btn" data-view="pmr" data-color="sky"><span class="nav-icon">♿</span>Pasajeros PMR</button>
           <button class="nav-btn" data-view="asignaciones" data-color="teal"><span class="nav-icon">📋</span>Asignaciones</button>
           <button class="nav-btn" data-view="agentes" data-color="emerald"><span class="nav-icon">🧑‍✈️</span>Agentes</button>
@@ -1658,6 +1661,52 @@
           <div class="empty-state" id="empty-timeline" style="display:none;">No hay vuelos para el Timeline.</div>
         </section>
 
+        <!-- ✅ NUEVA VISTA: TRAMOS -->
+        <section id="view-tramos" class="view-section">
+          <div class="view-filters-tramos" style="display:flex; flex-direction:column; gap:12px; margin-bottom:14px;">
+            <div class="airline-selectors" id="tramos-airline-selector" style="display:flex; gap:12px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--border); justify-content:center;">
+              <!-- Logos se cargarán dinámicamente -->
+            </div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+              <div style="min-width:180px;">
+                <label>Filtrar por Vuelo
+                  <input type="text" id="filtro-tramos-vuelo" placeholder="Ej: LA801" style="width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px; font-size:12px; outline:none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='#cbd5e1'" />
+                </label>
+              </div>
+              <div style="min-width:150px;">
+                <label>Filtrar por Fecha
+                  <input type="date" id="filtro-tramos-fecha" />
+                </label>
+              </div>
+              <button class="btn-mini" id="btn-limpiar-filtros-tramos" style="height:38px;">Limpiar Filtros</button>
+              <button class="btn-mini" id="btn-exportar-tramos-xls" style="height:38px; background:#16a34a; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:800; padding:0 12px;" title="Exportar a Excel (XLS)">XLS</button>
+              <button class="btn-mini" id="btn-exportar-tramos-xlsx" style="height:38px; background:#16a34a; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:800; padding:0 12px;" title="Exportar a Excel (XLSX)">XLSX</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table>
+              <thead>
+                <tr>
+                  <th style="background:var(--primary); color:white; border-top-left-radius:10px; font-weight:800; font-size:12px; padding:10px;">✈️ VUELO</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">👤 PASAJERO</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">🕒 HORA</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">♿ SSR</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">📍 TOMADO EN</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">🏁 DEJADO EN</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">🦺 AGENTE</th>
+                  <th style="background:var(--primary); color:white; font-weight:800; font-size:12px; padding:10px;">⏱️ ESTADO</th>
+                  <th style="background:var(--primary); color:white; border-top-right-radius:10px; font-weight:800; font-size:12px; padding:10px;">📋 STATUS PAX</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-tramos">
+                <!-- Data will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="empty-tramos" style="display:none;">No hay pasajeros PMR que coincidan con los filtros.</div>
+        </section>
+
         <section id="view-como" class="view-section">
           <div style="padding:10px 8px; font-size:12px; line-height:1.45; color:var(--text);">
             <div style="display:flex; flex-direction:column; gap:10px;">
@@ -1777,6 +1826,32 @@
     let cachePasajeros = [];
     let cacheAsignaciones = [];
     let cacheAgentes = [];
+    let cacheTramos = []; // Cache para pasajeros de Supabase
+
+    // --- Configuración Supabase ---
+    const SUPABASE_URL = "https://grfloctmwuigrovocgyc.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyZmxvY3Rtd3VpZ3Jvdm9jZ3ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNjYwMDcsImV4cCI6MjA4OTk0MjAwN30.ShnYRFUA6sDKCyKC19AaARVcSsD4WQ4IbdIPhU1unGQ";
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ✅ Filtros de TRAMOS
+    let filtroTramosAerolinea = "";
+    let filtroTramosVuelo = "";
+    let filtroTramosFecha = "";
+
+    const AIRLINES = [
+      { name: "LATAM", logo: "img/latam.jpg", prefix: "LA" },
+      { name: "DELTA", logo: "img/delta.jpg", prefix: "DL" },
+      { name: "AirCanada", logo: "img/aircanada.jpg", prefix: "AC" },
+      { name: "AirFrance", logo: "img/airfrance.jpg", prefix: "AF" },
+      { name: "KLM", logo: "img/klm.jpg", prefix: "KL" },
+      { name: "Copa Airlines", logo: "img/copa.jpg", prefix: "CM" },
+      { name: "BOA", logo: "img/boa.jpg", prefix: "OB" },
+      { name: "BritishAirlines", logo: "img/british.jpg", prefix: "BA" },
+      { name: "AerolineasArgentinas", logo: "img/argentinas.jpg", prefix: "AR" },
+      { name: "Iberia", logo: "img/iberia.jpg", prefix: "IB" },
+      { name: "LEVEL", logo: "img/level.jpg", prefix: "LL" },
+      { name: "Qantas", logo: "img/qantas.jpg", prefix: "QF" }
+    ];
 
     // ✅ Bulk selection state
     let selectedPmrIds = new Set();
@@ -2761,8 +2836,369 @@
       else if (vista === "pmr") renderVistaPmr();
       else if (vista === "asignaciones") renderVistaAsignaciones();
       else if (vista === "agentes") renderVistaAgentes();
+      else if (vista === "tramos") renderVistaTramos();
       else if (vista === "timeline") renderVistaTimeline();
       else if (vista === "como") renderVistaComo();
+    }
+
+    // ============== VISTA TRAMOS (SUPABASE) ==============
+
+    async function inicializarTramos() {
+      // Cargar datos iniciales
+      await cargarDatosTramos();
+
+      // Suscribirse a cambios en tiempo real
+      _supabase
+        .channel('public:pasajeros_pmr')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'pasajeros_pmr' }, payload => {
+          console.log('Cambio en Supabase detectado:', payload);
+          cargarDatosTramos(); // Recargar al detectar cambio
+        })
+        .subscribe();
+      
+      renderAirlineSelectors();
+    }
+
+    async function cargarDatosTramos() {
+      try {
+        const { data, error } = await _supabase
+          .from('pasajeros_pmr')
+          .select('*');
+        
+        if (error) throw error;
+        cacheTramos = data || [];
+        
+        if (document.querySelector('.nav-btn[data-view="tramos"]').classList.contains('active')) {
+          renderVistaTramos();
+        }
+      } catch (err) {
+        console.error("Error cargando tramos de Supabase:", err);
+      }
+    }
+
+    function renderAirlineSelectors() {
+      const container = document.getElementById("tramos-airline-selector");
+      if (!container) return;
+
+      container.innerHTML = AIRLINES.map(a => {
+        const isActive = filtroTramosAerolinea === a.name;
+        const bg = isActive ? "var(--primary-2)" : "#ffffff";
+        const borderColor = isActive ? "var(--primary)" : "#e2e8f0";
+        const shadow = isActive ? "0 4px 12px rgba(30,64,175,0.25)" : "0 1px 3px rgba(0,0,0,0.05)";
+        return `
+        <div class="airline-logo-item"
+             onclick="setFiltroTramosAerolinea('${a.name}')"
+             style="cursor:pointer; padding:6px 12px; background:${bg}; border:1.5px solid ${borderColor}; border-radius:10px; box-shadow:${shadow}; transition:all 0.2s ease-in-out;"
+             onmouseover="this.style.transform='translateY(-2px)';"
+             onmouseout="this.style.transform='translateY(0)';">
+          <img src="${a.logo}" alt="${a.name}" style="height:36px; width:auto; object-fit:contain; display:block; filter:${isActive ? 'none' : 'grayscale(100%)'}; opacity:${isActive ? '1' : '0.4'}; transition: all 0.2s;" />
+        </div>
+        `;
+      }).join("");
+    }
+
+    function setFiltroTramosAerolinea(name) {
+      if (filtroTramosAerolinea === name) filtroTramosAerolinea = "";
+      else filtroTramosAerolinea = name;
+      renderAirlineSelectors();
+      renderVistaTramos();
+    }
+
+    function renderVistaTramos() {
+      setTituloVista("TRAMOS");
+      setChipInfo("Real-time", "Sincronizado con Supabase");
+
+      const tbody = document.getElementById("tbody-tramos");
+      const empty = document.getElementById("empty-tramos");
+      const selVuelo = document.getElementById("filtro-tramos-vuelo");
+      const inputFecha = document.getElementById("filtro-tramos-fecha");
+
+      if (!tbody) return;
+      tbody.innerHTML = "";
+
+      // Filtrar datos base de cachePasajeros
+      let fechaFiltro = hoyTrunc();
+      if (inputFecha && inputFecha.value) {
+        const d = parseFechaSolo(inputFecha.value);
+        if (d) fechaFiltro = d;
+      }
+
+      let baseData = cachePasajeros.filter(p => {
+        const vuelo = getVueloDePmr(p);
+        const f = parseFechaSolo(vuelo ? vuelo.fecha : pmrFechaYmd(p));
+        if (!f) return false;
+        
+        return f.getTime() === fechaFiltro.getTime();
+      });
+
+      let filtrados = baseData.map(p => {
+        const v = getVueloDePmr(p);
+        const aero = v ? v.aerolinea : "";
+        const horaVuelo = v ? formatearHora(v.horaProgramada) : (p.hora || "");
+
+        // Calcular milisegundos para orden y filtro de tiempo
+        let ms = 9e15;
+        if (v) {
+          const dt = obtenerDateTimeVuelo(v);
+          if (dt) ms = dt.getTime();
+        } else if (p.hora) {
+          const f = parseFechaSolo(pmrFechaYmd(p));
+          if (f) {
+            const hMatch = String(p.hora).match(/(\d{1,2}):(\d{2})/);
+            if (hMatch) {
+               ms = new Date(f.getFullYear(), f.getMonth(), f.getDate(), parseInt(hMatch[1], 10), parseInt(hMatch[2], 10)).getTime();
+            }
+          }
+        }
+        
+        // Buscar coincidencia en Supabase (cacheTramos)
+        const tramo = cacheTramos.find(t => {
+          if (t.id_pmr && String(t.id_pmr) === String(p.idPmr)) return true;
+          if (t.vuelo && p.vuelo && t.vuelo.trim() === p.vuelo.trim() && 
+              t.pasajero && p.nombre && normTxt(t.pasajero) === normTxt(p.nombre)) {
+            return true;
+          }
+          return false;
+        }) || {};
+
+        return {
+           idPmr: p.idPmr || "",
+           vuelo: p.vuelo || "",
+           aerolinea: aero,
+           nombre: p.nombre || "Sin nombre",
+           hora: horaVuelo,
+           ssr: normalizarTipoAsistenciaPmr(p.tipoAsistencia || p.ssr || p.tipo_asistencia || ""),
+           tomado_en: tramo.tomado_en || "Sin Info",
+           dejado_en: tramo.dejado_en || "Sin Info",
+           id_agente: tramo.id_agente || tramo.agente || p.agenteAsignado || p.agente || "",
+           periodo: tramo.periodo || tramo.ultima_actualizacion || "",
+           status_pax: tramo.status_pax || tramo.estado || p.estadoPmr || "En espera",
+           _timeMs: ms
+        };
+      });
+
+      // 1. Filtrar pasajeros de máximo 1 hora 30 minutos atrás
+      // EXCEPTO si se selecciona una aerolínea (ahí se muestran todos los del día)
+      if (!filtroTramosAerolinea) {
+        const ahoraMs = new Date().getTime();
+        const limiteMs = ahoraMs - (90 * 60 * 1000);
+        filtrados = filtrados.filter(p => p._timeMs >= limiteMs);
+      }
+
+      // 2. Ordenar por hora (ascendente)
+      filtrados.sort((a, b) => a._timeMs - b._timeMs);
+
+      if (filtroTramosAerolinea) {
+        const selectedAero = AIRLINES.find(a => a.name === filtroTramosAerolinea);
+        if (selectedAero && selectedAero.prefix) {
+          const pref = selectedAero.prefix.toLowerCase();
+          filtrados = filtrados.filter(p => (p.vuelo || "").toLowerCase().startsWith(pref));
+        }
+      }
+      
+      if (filtroTramosVuelo) {
+        const query = filtroTramosVuelo.trim().toLowerCase();
+        filtrados = filtrados.filter(p => (p.vuelo || "").toLowerCase().includes(query));
+      }
+
+      window.ultimosTramosFiltrados = filtrados;
+
+      if (filtrados.length === 0) {
+        empty.style.display = "block";
+      } else {
+        empty.style.display = "none";
+        filtrados.forEach(p => {
+          const tr = document.createElement("tr");
+          // Styling moderno dinámico por fila
+          const upperSsr = (p.ssr || "").toUpperCase();
+          let borderLeftColor = "transparent";
+          if (upperSsr.includes("WCHC")) borderLeftColor = "#ef4444";
+          else if (upperSsr.includes("WCHS")) borderLeftColor = "#f59e0b";
+          else if (upperSsr.includes("WCHR")) borderLeftColor = "#3b82f6";
+          else if (upperSsr.includes("BLND") || upperSsr.includes("DEAF")) borderLeftColor = "#a855f7";
+          else if (upperSsr.includes("DPNA")) borderLeftColor = "#d97706";
+
+          tr.style.boxShadow = "inset 4px 0 0 0 " + borderLeftColor;
+          tr.style.transition = "background-color 0.2s ease, transform 0.1s ease";
+          tr.onmouseover = function() { this.style.backgroundColor = "#f8fafc"; this.style.transform = "scale(1.002)"; this.style.boxShadow = "inset 6px 0 0 0 " + borderLeftColor; };
+          tr.onmouseout = function() { this.style.backgroundColor = "transparent"; this.style.transform = "scale(1)"; this.style.boxShadow = "inset 4px 0 0 0 " + borderLeftColor; };
+          
+          // Truncar nombre a 25 caracteres
+          const nombreCompleto = p.nombre || "Sin nombre";
+          const nombreCorto = nombreCompleto.length > 25 ? nombreCompleto.substring(0, 25) + "..." : nombreCompleto;
+
+          // WhatsApp link para el agente
+          let agentHtml = p.id_agente || "—";
+          const agenteFull = cacheAgentes.find(a => String(a.idAgente) === String(p.id_agente));
+          if (agenteFull) {
+            let cleanNum = String(agenteFull.telefono || "").trim().replace(/\D/g, "");
+            let waNum = "";
+            if (cleanNum.startsWith("56") && cleanNum.length >= 10) waNum = "+" + cleanNum;
+            else if (cleanNum.startsWith("9") && cleanNum.length === 9) waNum = "+56" + cleanNum;
+            else if (cleanNum.length === 8) waNum = "+569" + cleanNum;
+            else if (cleanNum.length > 0) waNum = "+56" + cleanNum;
+            
+            const waLink = waNum ? `https://wa.me/${waNum}` : null;
+            
+            agentHtml = `<span title="Agente: ${agenteFull.nombre || ''}" style="cursor:help; border-bottom:1px dotted #666;">${p.id_agente}</span>`;
+            if (waLink) {
+              agentHtml += ` 
+                <a href="${waLink}" target="_blank" title="Contactar vía WhatsApp" style="text-decoration:none; margin-left:4px;">
+                  <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:#25D366;vertical-align:middle;"><path d="M11.996 2C6.471 2 2 6.471 2 11.996c0 1.777.464 3.497 1.341 5.013L2 22l5.122-1.312A9.976 9.976 0 0 0 11.996 22c5.525 0 9.996-4.471 9.996-9.996S17.521 2 11.996 2zM12 20.177c-1.488 0-2.946-.382-4.24-1.107l-.304-.171-3.153.805.823-3.04-.187-.297a8.12 8.12 0 0 1-1.139-4.19c0-4.516 3.682-8.198 8.2-8.198 4.516 0 8.198 3.682 8.198 8.198-.001 4.515-3.682 8.197-8.198 8.197zm4.51-6.191c-.247-.123-1.464-.722-1.691-.803-.226-.082-.391-.123-.556.123-.165.247-.643.803-.789.967-.145.165-.29.185-.537.062-.247-.123-1.045-.385-1.993-1.232-.736-.658-1.232-1.472-1.378-1.719-.146-.247-.015-.38.108-.503.111-.11.247-.29.37-.433.123-.144.164-.247.246-.412.083-.165.042-.309-.019-.433-.062-.123-.556-1.339-.762-1.834-.201-.482-.405-.417-.556-.425-.145-.008-.31-.008-.475-.008s-.433.062-.66.31c-.227.247-.866.845-.866 2.06 0 1.215.886 2.39 1.01 2.555.123.165 1.748 2.668 4.238 3.744 1.837.794 2.516.657 3.013.565.658-.123 1.464-.597 1.67-1.176.206-.576.206-1.069.144-1.173-.061-.101-.226-.163-.473-.287z"/></svg>
+                </a>`;
+            }
+          }
+
+          const optsTramos = ["Sin Info", "Puente Arribo", "Punto T1", "Punto T2", "Embarque A", "Embarque B", "Embarque C", "Embarque D", "Embarque E", "Embarque F", "Salon VIP", "Minsal", "Plaza Central", "Conexiones", "Salida AMB"];
+          
+          const safeName = p.nombre.replace(/'/g, "\\'");
+          const safeAero = p.aerolinea.replace(/'/g, "\\'");
+
+          const renderSelect = (campo, valorActual) => {
+            const valSafe = valorActual && valorActual !== "—" ? valorActual : "Sin Info";
+            let html = `<select onchange="actualizarDatoTramo('${p.idPmr}', '${campo}', this.value, '${p.vuelo}', '${safeName}', '${safeAero}')" style="padding:5px;border-radius:8px;border:1px solid #cbd5e1;font-size:10px;width:110px;background:#f8fafc;outline:none;cursor:pointer;">`;
+            optsTramos.forEach(opt => {
+              const sel = (opt === valSafe) ? "selected" : "";
+              html += `<option value="${opt}" ${sel}>${opt}</option>`;
+            });
+            html += `</select>`;
+            return html;
+          };
+
+          const optsStatusPax = ["En Espera", "Contactado", "No Contactado", "Embarcado", "No Embarcado"];
+          const renderStatusSelect = (campo, valorActual) => {
+            const valSafe = valorActual && valorActual !== "—" ? valorActual : "En Espera";
+            let html = `<select onchange="actualizarDatoTramo('${p.idPmr}', '${campo}', this.value, '${p.vuelo}', '${safeName}', '${safeAero}')" style="padding:5px;border-radius:8px;border:1px solid #cbd5e1;font-size:10px;width:105px;background:#f8fafc;outline:none;cursor:pointer;font-weight:700;">`;
+            optsStatusPax.forEach(opt => {
+              const sel = (opt === valSafe) ? "selected" : "";
+              html += `<option value="${opt}" ${sel}>${opt}</option>`;
+            });
+            html += `</select>`;
+            return html;
+          };
+
+          const renderSsr = (val) => {
+            if (!val || val === "—") return `<span style="font-size:10px;font-weight:800;background:#f3f4f6;padding:2px 6px;border-radius:999px;color:#6b7280;">—</span>`;
+            const upper = val.toUpperCase();
+            let bg, text;
+            if (upper.includes("WCHC")) { bg="#fee2e2"; text="#991b1b"; }
+            else if (upper.includes("WCHS")) { bg="#fef3c7"; text="#92400e"; }
+            else if (upper.includes("WCHR")) { bg="#e0e7ff"; text="#3730a3"; }
+            else if (upper.includes("BLND") || upper.includes("DEAF")) { bg="#fae8ff"; text="#86198f"; }
+            else if (upper.includes("DPNA")) { bg="#ffedd5"; text="#9a3412"; }
+            else { bg="#dcfce7"; text="#166534"; }
+            return `<span style="font-size:10px;font-weight:800;background:${bg};color:${text};border:1px solid ${bg};padding:2px 6px;border-radius:999px;">${val}</span>`;
+          };
+
+          tr.innerHTML = `
+            <td style="font-weight:700;">${p.vuelo || ""}</td>
+            <td title="${nombreCompleto}" style="cursor:default;">${nombreCorto}</td>
+            <td style="font-weight:800;font-size:12px;">${p.hora || "—"}</td>
+            <td>${renderSsr(p.ssr)}</td>
+            <td>${renderSelect('tomado_en', p.tomado_en)}</td>
+            <td>${renderSelect('dejado_en', p.dejado_en)}</td>
+            <td>${agentHtml}</td>
+            <td>${p.periodo ? formatearHora(p.periodo) : "—"}</td>
+            <td>${renderStatusSelect('status_pax', p.status_pax)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    window.actualizarDatoTramo = async function(idPmr, field, value, vuelo, pasajero, aerolinea) {
+      if(!idPmr || !vuelo) return;
+      try {
+        const ahora = new Date();
+        const horaStr = String(ahora.getHours()).padStart(2, '0') + ':' + String(ahora.getMinutes()).padStart(2, '0');
+        
+        // Identificar Agente (Dashboard es CDO/SPVR)
+        const currentAgent = "CDO/SPVR";
+
+        const updateData = {
+          id_pmr: idPmr,
+          vuelo: vuelo,
+          pasajero: pasajero,
+          aerolinea: aerolinea,
+          id_agente: currentAgent,
+          periodo: horaStr,
+          ultima_actualizacion: horaStr,
+          [field]: value
+        };
+
+        const pmrEnCache = cachePasajeros.find(p => String(p.idPmr) === String(idPmr));
+        if (pmrEnCache) {
+           updateData.fecha = pmrFechaYmd(pmrEnCache);
+        }
+
+        // 1. ACTUALIZACIÓN OPTIMISTA (refleja el cambio al instante sin recargar la página)
+        let found = false;
+        for (let i = 0; i < cacheTramos.length; i++) {
+          if (String(cacheTramos[i].id_pmr) === String(idPmr)) {
+             Object.assign(cacheTramos[i], updateData);
+             found = true;
+             break;
+          }
+        }
+        if (!found) cacheTramos.push(updateData);
+        
+        // Re-renderizamos para actualizar ID Agente y Hora *de inmediato*
+        if (document.querySelector('.nav-btn[data-view="tramos"]').classList.contains('active')) {
+          renderVistaTramos();
+        }
+
+        // 2. ENVIAR A SUPABASE
+        const { error } = await _supabase
+          .from('pasajeros_pmr')
+          .upsert(updateData, { onConflict: 'id_pmr' });
+          
+        if (error) {
+           throw error;
+        }
+      } catch (err) {
+        console.error("Error al actualizar ubicación en Supabase:", err);
+      }
+    };
+
+    function limpiarFiltrosTramos() {
+      filtroTramosAerolinea = "";
+      filtroTramosVuelo = "";
+      const inputFecha = document.getElementById("filtro-tramos-fecha");
+      if (inputFecha) inputFecha.value = "";
+      const selVuelo = document.getElementById("filtro-tramos-vuelo");
+      if (selVuelo) selVuelo.value = "";
+      
+      renderAirlineSelectors();
+      renderVistaTramos();
+    }
+
+    function exportarTramos(formato) {
+      if (!window.ultimosTramosFiltrados || window.ultimosTramosFiltrados.length === 0) {
+        alert("No hay pasajeros PMR en la vista TRAMOS para exportar.");
+        return;
+      }
+      
+      const datos = window.ultimosTramosFiltrados.map(p => ({
+        "Vuelo": p.vuelo || "",
+        "Pasajero": p.nombre || "Sin nombre",
+        "Hora": p.hora || "",
+        "SSR": p.ssr || "—",
+        "Tomado en": p.tomado_en || "Sin Info",
+        "Dejado en": p.dejado_en || "Sin Info",
+        "Agente": p.id_agente || "",
+        "Hora Estado": p.periodo ? formatearHora(p.periodo) : "",
+        "Status Pax": p.status_pax || "En Espera"
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(datos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Tramos_PMR");
+      
+      let filtroNombre = filtroTramosAerolinea ? filtroTramosAerolinea.replace(/\s+/g, '') : "TodasLasAerolineas";
+      const inputFecha = document.getElementById("filtro-tramos-fecha");
+      let fechaFilter = (inputFecha && inputFecha.value) ? inputFecha.value : "Hoy";
+      
+      XLSX.writeFile(wb, `Tramos_${filtroNombre}_${fechaFilter}.${formato}`);
     }
 
     function setTituloVista(titulo) {
@@ -4503,7 +4939,32 @@
         }
       });
 
+      // ✅ Eventos TRAMOS
+      const selTramosVuelo = document.getElementById("filtro-tramos-vuelo");
+      if (selTramosVuelo) {
+        selTramosVuelo.addEventListener("input", (e) => {
+          filtroTramosVuelo = e.target.value;
+          renderVistaTramos();
+        });
+      }
+
+      const inputTramosFecha = document.getElementById("filtro-tramos-fecha");
+      if (inputTramosFecha) {
+        inputTramosFecha.addEventListener("change", renderVistaTramos);
+      }
+
+      const btnLimpiarTramos = document.getElementById("btn-limpiar-filtros-tramos");
+      if (btnLimpiarTramos) {
+        btnLimpiarTramos.addEventListener("click", limpiarFiltrosTramos);
+      }
+      
+      const btnExpTramosXls = document.getElementById("btn-exportar-tramos-xls");
+      const btnExpTramosXlsx = document.getElementById("btn-exportar-tramos-xlsx");
+      if (btnExpTramosXls) btnExpTramosXls.addEventListener("click", () => exportarTramos("xls"));
+      if (btnExpTramosXlsx) btnExpTramosXlsx.addEventListener("click", () => exportarTramos("xlsx"));
+
       cargarDatos();
+      inicializarTramos(); // Inicializar Supabase y TRAMOS
     });
 
     // ============== HISTORIAL DE VUELOS ==============
