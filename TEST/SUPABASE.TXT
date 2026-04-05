@@ -1,0 +1,12 @@
+# SUPABASE CONFIGURATION - WEB PMR
+# Project: grfloctmwuigrovocgyc
+
+SUPABASE_URL = "https://grfloctmwuigrovocgyc.supabase.co"
+
+ANON_PUBLIC = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyZmxvY3Rtd3VpZ3Jvdm9jZ3ljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNjYwMDcsImV4cCI6MjA4OTk0MjAwN30.ShnYRFUA6sDKCyKC19AaARVcSsD4WQ4IbdIPhU1unGQ"
+
+SERVICE_ROLE = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdyZmxvY3Rtd3VpZ3Jvdm9jZ3ljIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDM2NjAwNywiZXhwIjoyMDg5OTQyMDg3fQ.vmOFa-MDjYq_ASe7j42m7kLw_OA4UgTiOXXjWyqZ8Uw"
+
+PUBLISHABLE_KEY = "sb_publishable_ehKzXLFI5RA7FQj5Dh4LXQ_Z-pH7HTY"
+
+SECRET_KEY = "sb_secret_5zhaonW6PH494JItomgUUg_h5eApUrY"

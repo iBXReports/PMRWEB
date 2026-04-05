@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>WebPMR — Portal Aerolíneas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --font: 'Inter', system-ui, sans-serif;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --sidebar-w: 260px;
+            --topbar-h: 70px;
+            --tr: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+            --blue: #3b82f6;
+            --blue-lt: #dbeafe;
+            --green: #10b981;
+            --green-lt: #d1fae5;
+            --orange: #f97316;
+            --orange-lt: #ffedd5;
+            --red: #ef4444;
+            --red-lt: #fee2e2;
+            --purple: #8b5cf6;
+            --purple-lt: #ede9fe;
+            --teal: #06b6d4;
+            --teal-lt: #cffafe;
+            --yellow: #f59e0b;
+            --yellow-lt: #fef3c7;
+            --pink: #ec4899;
+            --pink-lt: #fce7f3;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0b1120;
+            --bg2: #1e293b;
+            --bg3: #334155;
+            --card: #141e33;
+            --card2: #1e293b;
+            --border: #2a3b54;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --text3: #64748b;
+            --sh: 0 4px 20px rgba(0, 0, 0, .3);
+            --sh-hover: 0 8px 30px rgba(0, 0, 0, .5);
+            color-scheme: dark;
+        }
+
+        [data-theme="light"] {
+            --bg: #f4f7f9;
+            --bg2: #e2e8f0;
+            --bg3: #cbd5e1;
+            --card: #ffffff;
+            --card2: #f8fafc;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text2: #475569;
+            --text3: #94a3b8;
+            --sh: 0 4px 20px rgba(0, 0, 0, .04);
+            --sh-hover: 0 12px 30px rgba(0, 0, 0, .08);
+            color-scheme: light;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html {
+            font-size: 18px
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: background var(--tr), color var(--tr)
+        }
+
+        /* ── LOGIN OVERLAY ── */
+        #loginOverlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.4s ease;
+        }
+
+        .login-box {
+            background: var(--card);
+            padding: 40px;
+            border-radius: var(--radius);
+            box-shadow: var(--sh-hover);
+            border: 1px solid var(--border);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-logo {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--text);
+            margin-bottom: 5px;
+        }
+
+        .login-subtitle {
+            font-size: 0.8rem;
+            color: var(--text3);
+            margin-bottom: 20px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color var(--tr);
+        }
+
+        .login-input:focus {
+            border-color: var(--blue);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: linear-gradient(135deg, var(--blue), #1d4ed8);
+            color: #fff;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform var(--tr), box-shadow var(--tr);
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--blue) 30%, transparent);
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px color-mix(in srgb, var(--blue) 50%, transparent);
+        }
+
+        .error-msg {
+            color: var(--red);
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        /* ── APP WRAPPER ── */
+        #app {
+            display: none;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ── TOPBAR ── */
+        #topbar {
+            height: var(--topbar-h);
+            background: color-mix(in srgb, var(--card) 85%, transparent);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 14px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            box-shadow: var(--sh);
+            transition: background var(--tr);
+        }
+
+        .logo-box {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 40%, transparent);
+            flex-shrink: 0;
+        }
+
+        .logo-name {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -.5px;
+            background: linear-gradient(90deg, var(--text), var(--text2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-sub {
+            font-size: .65rem;
+            color: var(--text3);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .t-sep {
+            width: 2px;
+            height: 32px;
+            background: var(--border);
+            border-radius: 2px;
+            flex-shrink: 0
+        }
+
+        .t-clock {
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            letter-spacing: -0.5px;
+        }
+
+        .t-date {
+            font-size: .62rem;
+            color: var(--text3);
+            font-weight: 600;
+        }
+
+        .t-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .airline-pill {
+            background: var(--bg2);
+            border: 1px solid var(--blue);
+            border-radius: 30px;
+            padding: 6px 20px;
+            font-size: .8rem;
+            font-weight: 800;
+            color: var(--text);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 0 15px color-mix(in srgb, var(--blue) 20%, transparent);
+        }
+
+        .t-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+            flex-shrink: 0
+        }
+
+        .db-chip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 7px 14px;
+            white-space: nowrap
+        }
+
+        .db-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: blink 2s infinite
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1)
+            }
+
+            50% {
+                opacity: .4;
+                transform: scale(0.8)
+            }
+        }
+
+        .db-lbl {
+            font-size: .62rem;
+            color: var(--text3);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .db-val {
+            font-size: .76rem;
+            font-weight: 800;
+            color: var(--green)
+        }
+
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all var(--tr)
+        }
+
+        .icon-btn:hover {
+            border-color: var(--blue);
+            background: var(--card);
+            transform: translateY(-2px);
+        }
+
+        .weather-widget {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: color-mix(in srgb, var(--card2) 60%, transparent);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            border-radius: 12px;
+            transition: all var(--tr);
+        }
+
+        .w-icon {
+            font-size: 1.4rem;
+        }
+
+        .w-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .w-temp {
+            font-size: .85rem;
+            font-weight: 900;
+            line-height: 1.1;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .w-desc {
+            font-size: .6rem;
+            color: var(--text3);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* ── LAYOUT ── */
+        #layout {
+            display: flex;
+            flex: 1;
+            min-height: 0
+        }
+
+        /* ── SIDEBAR ── */
+        #sidebar {
+            width: var(--sidebar-w);
+            background: var(--card);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+            transition: background var(--tr);
+        }
+
+        .sb-label {
+            font-size: .65rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text3);
+            padding: 20px 16px 10px
+        }
+
+        .nav-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 12px 10px
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            background: transparent;
+            cursor: pointer;
+            transition: all var(--tr);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .nav-btn:hover {
+            background: var(--bg2);
+            border-color: var(--border);
+        }
+
+        .nav-btn.active {
+            background: color-mix(in srgb, var(--blue) 15%, transparent);
+            border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+            color: var(--blue);
+        }
+
+        .nav-icon {
+            font-size: 1.4rem;
+        }
+
+        /* ── MAIN CONTENT ── */
+        #main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .tab-page {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .tab-page.active {
+            display: flex;
+            animation: fadeUp .4s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        /* ── HEADERS ── */
+        .page-hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+
+        .page-hdr-l {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .page-hdr-icon {
+            font-size: 1.8rem;
+            padding: 10px;
+            background: var(--card);
+            border-radius: 12px;
+            box-shadow: var(--sh);
+            border: 1px solid var(--border);
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+
+        .page-sub {
+            font-size: .76rem;
+            color: var(--text3);
+            font-weight: 600;
+        }
+
+        .sec-lbl {
+            font-size: .9rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text);
+            padding-bottom: 6px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: -8px;
+        }
+
+        /* ── BUTTONS & FORMS ── */
+        .btn-primary {
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: linear-gradient(135deg, var(--blue), #1d4ed8);
+            color: #fff;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--blue) 30%, transparent);
+            transition: all var(--tr);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px color-mix(in srgb, var(--blue) 50%, transparent);
+        }
+
+        .btn-secondary {
+            padding: 10px 18px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--tr);
+        }
+
+        .btn-secondary:hover {
+            background: var(--card);
+            border-color: var(--text3);
+        }
+
+        .pmr-input,
+        .pmr-select {
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color var(--tr);
+        }
+
+        .pmr-input:focus,
+        .pmr-select:focus {
+            border-color: var(--blue);
+            background: var(--card);
+        }
+
+        /* ── DASHBOARD KPIs ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .kpi-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--sh);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .kpi-card.blue::before {
+            background: var(--blue);
+        }
+
+        .kpi-card.green::before {
+            background: var(--green);
+        }
+
+        .kpi-card.red::before {
+            background: var(--red);
+        }
+
+        .kpi-card.orange::before {
+            background: var(--orange);
+        }
+
+        .kpi-card.purple::before {
+            background: var(--purple);
+        }
+
+        .kpi-lbl {
+            font-size: .8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text3);
+        }
+
+        .kpi-body {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+        }
+
+        .kpi-val {
+            font-size: 2.5rem;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--text);
+        }
+
+        .kpi-split {
+            font-size: 0.75rem;
+            color: var(--text2);
+            display: flex;
+            flex-direction: column;
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--sh);
+            height: 300px;
+        }
+
+        /* ── TABLAS ── */
+        .table-wrap {
+            width: 100%;
+            overflow-x: auto;
+            background: var(--card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--sh);
+        }
+
+        .pmr-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .pmr-table th {
+            padding: 14px 16px;
+            background: var(--card2);
+            font-size: .75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--text3);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .pmr-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: .85rem;
+            font-weight: 600;
+        }
+
+        .pmr-table tbody tr:hover {
+            background: color-mix(in srgb, var(--blue) 10%, transparent);
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            background: var(--card);
+            padding: 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--sh);
+            align-items: center;
+        }
+
+        /* ── SETTINGS ── */
+        .settings-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            max-width: 600px;
+            box-shadow: var(--sh);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ── LOGIN OVERLAY ── -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <div class="login-logo">✈️</div>
+            <div class="login-title">Portal Aerolíneas</div>
+            <div class="login-subtitle">Gestión Privada de PMR y Vuelos</div>
+
+            <div id="loginError" class="error-msg">Credenciales incorrectas</div>
+
+            <input type="text" id="loginUser" class="login-input" placeholder="Usuario (AEROLINEA)">
+            <input type="password" id="loginPass" class="login-input" placeholder="Contraseña"
+                onkeypress="if(event.key === 'Enter') checkLogin()">
+
+            <button class="login-btn" onclick="checkLogin()">Ingresar al Portal</button>
+            <div style="font-size: 0.75rem; color: var(--text3); margin-top: 10px;">
+                Aerolíneas soportadas: DELTA, AIRFRANCE, KLM, AIRCANADA, BOA, AVIANCA, IBERIA, LEVEL, ARAJET, BRITISH,
+                QANTAS, AEROLINEAS, LATAM.
+            </div>
+        </div>
+    </div>
+
+    <!-- ── APP MAIN CONTENT ── -->
+    <div id="app">
+        <!-- TOPBAR -->
+        <header id="topbar">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div class="logo-box">♿</div>
+                <div>
+                    <div class="logo-name">WebPMR</div>
+                    <div class="logo-sub">Panel Aerolíneas</div>
+                </div>
+            </div>
+
+            <div class="t-sep"></div>
+
+            <div class="t-center">
+                <div class="airline-pill" id="currentAirlinePill">
+                    ✈️ <span id="currentAirlineName">CARGANDO...</span>
+                </div>
+            </div>
+
+            <div class="t-right">
+                <div style="text-align: right; margin-right: 15px;">
+                    <div class="t-clock" id="clock">00:00:00</div>
+                    <div class="t-date" id="dateStr">—</div>
+                </div>
+                <div class="weather-widget">
+                    <div class="w-icon" id="weatherIcon">🌤️</div>
+                    <div class="w-info">
+                        <div class="w-temp" id="weatherTemp">--°C</div>
+                        <div class="w-desc" id="weatherDesc">Pudahuel</div>
+                    </div>
+                </div>
+                <div class="db-chip">
+                    <div class="db-dot" id="dbDot"></div>
+                    <div>
+                        <div class="db-lbl">Base de datos</div>
+                        <div class="db-val" id="dbVal">Conectado</div>
+                    </div>
+                </div>
+                <button class="icon-btn" id="themeBtn" onclick="toggleTheme()">🌙</button>
+                <button class="icon-btn" onclick="logout()" title="Cerrar Sesión"
+                    style="color: var(--red); border-color: color-mix(in srgb, var(--red) 30%, transparent);">🚪</button>
+            </div>
+        </header>
+
+        <div id="layout">
+            <!-- SIDEBAR -->
+            <nav id="sidebar">
+                <div class="sb-label">Navegación</div>
+                <div class="nav-grid">
+                    <button class="nav-btn active" onclick="showTab('dashboard', this)">
+                        <span class="nav-icon">📊</span> Dashboard
+                    </button>
+                    <button class="nav-btn" onclick="showTab('vuelos', this)">
+                        <span class="nav-icon">✈️</span> Crear Vuelos
+                    </button>
+                    <button class="nav-btn" onclick="showTab('pasajeros', this)">
+                        <span class="nav-icon">♿</span> Cargar Pasajeros
+                    </button>
+                    <button class="nav-btn" onclick="showTab('ajustes', this)">
+                        <span class="nav-icon">⚙️</span> Ajustes
+                    </button>
+                </div>
+            </nav>
+
+            <!-- MAIN PAGES -->
+            <main id="main">
+
+                <!-- DASHBOARD -->
+                <div class="tab-page active" id="page-dashboard">
+                    <div class="page-hdr">
+                        <div class="page-hdr-l">
+                            <span class="page-hdr-icon">📊</span>
+                            <div>
+                                <div class="page-title">Dashboard Operacional</div>
+                                <div class="page-sub">Información exclusiva para <span
+                                        class="airline-name-display"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sec-lbl">Resumen de Vuelos</div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card blue">
+                            <div class="kpi-lbl">Total Vuelos</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiFlights">0</div>
+                                <div class="kpi-split">
+                                    <span style="color: var(--blue)"><span id="kpiFlightsNac">0</span> Nac</span>
+                                    <span style="color: var(--orange)"><span id="kpiFlightsInt">0</span> Int</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kpi-card green">
+                            <div class="kpi-lbl">Vuelos Atendidos</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiFlightsAtt">0</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card purple">
+                            <div class="kpi-lbl">Vuelos Completados</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiFlightsComp">0</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card red">
+                            <div class="kpi-lbl">Vuelos No Atendidos</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiFlightsPend">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sec-lbl">Asistencias PMR</div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card orange">
+                            <div class="kpi-lbl">Pasajeros PMR</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiPax">0</div>
+                                <div class="kpi-split">
+                                    <span style="color: var(--blue)"><span id="kpiPaxNac">0</span> Nac</span>
+                                    <span style="color: var(--orange)"><span id="kpiPaxInt">0</span> Int</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="kpi-card green">
+                            <div class="kpi-lbl">Asist. Atendidas</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiPaxAtt">0</div>
+                            </div>
+                        </div>
+                        <div class="kpi-card red">
+                            <div class="kpi-lbl">Asist. No Atendidas</div>
+                            <div class="kpi-body">
+                                <div class="kpi-val" id="kpiPaxPend">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sec-lbl">Distribución de Vuelos y PMR</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="chart-container">
+                            <canvas id="flightsChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="paxChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VUELOS -->
+                <div class="tab-page" id="page-vuelos">
+                    <div class="page-hdr">
+                        <div class="page-hdr-l">
+                            <span class="page-hdr-icon">✈️</span>
+                            <div>
+                                <div class="page-title">Gestión de Vuelos</div>
+                                <div class="page-sub">Crea y administra itinerarios de <span
+                                        class="airline-name-display"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-glass-vibrant" style="margin-bottom: 20px; padding: 20px; border-radius: 16px;">
+                        <span style="font-size:0.8rem; font-weight:800; color:var(--blue); display:block; margin-bottom:15px;">➕ CREAR NUEVO VUELO</span>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px;">
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Fecha Operativa</label>
+                                <input type="date" id="vueloFecha" class="pmr-input" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Hora (24h)</label>
+                                <input type="time" id="vueloHora" class="pmr-input" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Aerolínea</label>
+                                <input type="text" id="vueloAeroDisplay" class="pmr-input" disabled style="width: 100%; opacity: 0.6; background: rgba(255,255,255,0.05);">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">N° Vuelo</label>
+                                <input type="text" id="vueloNum" class="pmr-input" placeholder="Ej. LA120" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Tipo</label>
+                                <select id="vueloTipo" class="pmr-select" style="width: 100%;" onchange="updateGateOptions()">
+                                    <option value="EMBARQUE">🛫 EMBARQUE</option>
+                                    <option value="ARRIBO">🛬 ARRIBO</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Terminal</label>
+                                <select id="vueloTer" class="pmr-select" style="width: 100%;">
+                                    <option value="Nacional">T1 - Nacional</option>
+                                    <option value="Internacional">T2 - Internacional</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Gate</label>
+                                <select id="vueloGate" class="pmr-select" style="width: 100%;">
+                                    <option value="">-- Seleccionar --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700; display:block; margin-bottom:6px;">Destino Final</label>
+                                <input type="text" id="vueloRuta" class="pmr-input" placeholder="Ej. MAD" style="width: 100%;">
+                            </div>
+                            <div style="display:flex; align-items:flex-end;">
+                                <button class="btn-primary" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #3b82f6, #2563eb); border:none;" onclick="crearVuelo()">Guardar Vuelo</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-bottom:15px; justify-content:flex-end;">
+                        <input type="file" id="importFFile" accept=".csv, .xlsx, .xls" style="display:none;"
+                            onchange="importarVuelos(event)">
+                        <button class="btn-secondary" onclick="document.getElementById('importFFile').click()">📤
+                            Importar CSV</button>
+                        <button class="btn-secondary" onclick="exportarVuelos()">📥 Exportar CSV</button>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="pmr-table" style="text-align: left; border-spacing: 0; width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">ID</th>
+                                    <th style="border-bottom: 1px solid var(--border);">FECHA</th>
+                                    <th style="border-bottom: 1px solid var(--border);">HORA</th>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">AEROLÍNEA
+                                    </th>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">N° VUELO
+                                    </th>
+                                    <th style="border-bottom: 1px solid var(--border);">TERMINAL</th>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">GATE</th>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">PMR</th>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">SERVICIO</th>
+                                    <th style="text-align: center; border-bottom: 1px solid var(--border);">RUTA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vuelosTableBody">
+                                <!-- JS content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PASAJEROS -->
+                <div class="tab-page" id="page-pasajeros">
+                    <div class="page-hdr">
+                        <div class="page-hdr-l">
+                            <span class="page-hdr-icon">♿</span>
+                            <div>
+                                <div class="page-title">Carga de Pasajeros PMR</div>
+                                <div class="page-sub">Registra y asigna pasajeros a vuelos de <span
+                                        class="airline-name-display"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-bar">
+                        <div style="display:flex; gap:10px; width:100%; align-items:flex-end; flex-wrap:wrap;">
+                            <div style="flex:1; min-width: 200px;">
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700;">Nombre
+                                    Pasajero</label>
+                                <input type="text" id="paxNombre" class="pmr-input" placeholder="Nombre completo">
+                            </div>
+                            <div style="flex:1; min-width: 150px;">
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700;">Vuelo
+                                    Asignado</label>
+                                <select id="paxVuelo" class="pmr-select">
+                                    <option value="">-- Seleccionar Vuelo --</option>
+                                </select>
+                            </div>
+                            <div style="flex:1; min-width: 120px;">
+                                <label style="font-size:0.75rem; color:var(--text3); font-weight:700;">Código
+                                    SSR</label>
+                                <select id="paxSsr" class="pmr-select">
+                                    <option value="WCHR">WCHR</option>
+                                    <option value="WCHS">WCHS</option>
+                                    <option value="WCHC">WCHC</option>
+                                    <option value="MAAS">MAAS</option>
+                                </select>
+                            </div>
+                            <button class="btn-primary" onclick="crearPasajero()">➕ Cargar Pasajero</button>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-bottom:15px; justify-content:flex-end;">
+                        <input type="file" id="importPFile" accept=".csv, .xlsx, .xls" style="display:none;"
+                            onchange="importarPax(event)">
+                        <button class="btn-secondary" onclick="document.getElementById('importPFile').click()">📤 Cargar
+                            Masivo CSV</button>
+                        <button class="btn-secondary" onclick="exportarPax()">📥 Descargar Masivo CSV</button>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="pmr-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre Pasajero</th>
+                                    <th>Código SSR</th>
+                                    <th>Vuelo Asociado</th>
+                                    <th>Hora Vuelo</th>
+                                    <th>Estado Asistencia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paxTableBody">
+                                <!-- JS content -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- AJUSTES -->
+                <div class="tab-page" id="page-ajustes">
+                    <div class="page-hdr">
+                        <div class="page-hdr-l">
+                            <span class="page-hdr-icon">⚙️</span>
+                            <div>
+                                <div class="page-title">Ajustes de Cuenta</div>
+                                <div class="page-sub">Configuración del perfil: <span
+                                        class="airline-name-display"></span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                        <!-- Columna Ajustes -->
+                        <div class="settings-card" style="margin: 0;">
+                            <div class="sec-lbl">Seguridad y Acceso</div>
+                            <div id="settingsMsg"
+                                style="color:var(--green); font-size:0.85rem; font-weight:700; display:none;">
+                                Información actualizada correctamente.</div>
+
+                            <div class="form-group">
+                                <label>Nombre de Usuario</label>
+                                <input type="text" id="setUsuario" class="pmr-input" disabled style="opacity:0.7;">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Correo Electrónico de Contacto</label>
+                                <input type="email" id="setCorreo" class="pmr-input"
+                                    placeholder="contacto@aerolinea.com">
+                            </div>
+
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label>Nueva Contraseña</label>
+                                <input type="password" id="setPass1" class="pmr-input"
+                                    placeholder="Dejar en blanco para mantener la actual">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Repetir Nueva Contraseña</label>
+                                <input type="password" id="setPass2" class="pmr-input"
+                                    placeholder="Repite la nueva contraseña">
+                            </div>
+
+                            <button class="btn-primary" style="margin-top: 10px;" onclick="guardarAjustes()">💾 Guardar
+                                Cambios</button>
+                        </div>
+
+                        <!-- Columna Ayuda -->
+                        <div class="settings-card"
+                            style="margin: 0; background: var(--bg2); border-color: var(--blue);">
+                            <div class="sec-lbl" style="border-bottom-color: var(--blue);">📖 ¿Cómo funciona?</div>
+                            <div
+                                style="font-size: 0.85rem; color: var(--text2); display: flex; flex-direction: column; gap: 12px; line-height: 1.5;">
+                                <p><strong style="color: var(--blue);">1. Entorno Privado:</strong> Toda la información
+                                    cargada (vuelos y pasajeros PMR) es estrictamente privada. Solo los agentes de
+                                    coordinación general (WebPMR Central) podrán visualizar tus solicitudes para asignar
+                                    personal.</p>
+
+                                <p><strong style="color: var(--green);">2. Crear Vuelos:</strong> Dirígete a la pestaña
+                                    "Crear Vuelos" e ingresa el número, tipo y hora de tu vuelo. Los vuelos creados aquí
+                                    se enviarán directamente a la mesa de control de WebPMR.</p>
+
+                                <p><strong style="color: var(--orange);">3. Cargar Pasajeros:</strong> Un pasajero PMR
+                                    requiere ser asignado a un <strong>vuelo ya creado</strong>. Elige el código SSR
+                                    correspondiente. El estado será "PENDIENTE" hasta que el equipo de control le asigne
+                                    un agente en terreno.</p>
+
+                                <p><strong style="color: var(--purple);">4. Monitoreo (Dashboard):</strong> Tus
+                                    indicadores muestran el balance de PMR solicitados vs. la atención real en el
+                                    aeropuerto. Usa este panel para supervisar tus niveles de servicio.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- ── JAVASCRIPT LOGIC ── -->
+    <script>
+        // MOCK ACCOUNTS
+        const AIRLINES = {
+            'delta': { name: 'DELTA AIR LINES', pass: 'delta123', email: 'ops@delta.com' },
+            'airfrance': { name: 'AIR FRANCE', pass: 'airfrance123', email: 'ops@airfrance.com' },
+            'klm': { name: 'KLM ROYAL DUTCH', pass: 'klm123', email: 'ops@klm.com' },
+            'aircanada': { name: 'AIR CANADA', pass: 'aircanada123', email: 'ops@aircanada.ca' },
+            'boa': { name: 'BOLIVIANA DE AVIACIÓN', pass: 'boa123', email: 'ops@boa.bo' },
+            'avianca': { name: 'AVIANCA', pass: 'avianca123', email: 'ops@avianca.com' },
+            'iberia': { name: 'IBERIA', pass: 'iberia123', email: 'ops@iberia.es' },
+            'level': { name: 'LEVEL', pass: 'level123', email: 'ops@flylevel.com' },
+            'arajet': { name: 'ARAJET', pass: 'arajet123', email: 'ops@arajet.com' },
+            'british': { name: 'BRITISH AIRWAYS', pass: 'british123', email: 'ops@ba.com' },
+            'qantas': { name: 'QANTAS', pass: 'qantas123', email: 'ops@qantas.com.au' },
+            'aerolineas': { name: 'AEROLÍNEAS ARGENTINAS', pass: 'aerolineas123', email: 'ops@aerolineas.com.ar' },
+            'latam': { name: 'LATAM AIRLINES', pass: 'latam123', email: 'ops@latam.com' }
+        };
+
+        // STATE
+        let currentUser = null;
+        let flightsDB = {};
+        let paxDB = {};
+
+        // SUPABASE INIT
+        const SUPABASE_URL = "https://tgyltxcabrbegwlmcbmv.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRneWx0eGNhYnJiZWd3bG1jYm12Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMzE2NjcsImV4cCI6MjA5MDkwNzY2N30.wguY1f1HKaP4b8pCdO355Yf1pdcD9GJAalp4xQyCHuU";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // SYNC SUPABASE
+        async function fetchSupabaseData() {
+            if (!currentUser) return;
+            const alCodeText = currentUser.toUpperCase();
+
+            try {
+                // Obtenemos los vuelos del día de la aerolínea
+                const { data: vData } = await supabaseClient.from('vuelos').select('*').ilike('aerolinea_name', `%${alCodeText}%`).order('hora_programada');
+                // Almacenamos filtrando el formato web
+                flightsDB[currentUser] = vData ? vData.map(v => ({
+                    id: v.id,
+                    fecha: v.fecha,
+                    num: v.vuelo_num,
+                    tipo: v.tipo,
+                    ter: v.terminal === 'INTERNACIONAL' ? 'Internacional' : 'Nacional',
+                    hora: v.hora_programada ? v.hora_programada.substring(0, 5) : '--:--',
+                    gate: v.gate,
+                    ruta: v.ruta || '--',
+                    estado: 'Confirmado',
+                    airlineCode: currentUser
+                })) : [];
+
+                // Obtenemos pasajeros
+                const { data: pData } = await supabaseClient.from('asistencias').select('*').order('asignado_at', { ascending: false });
+
+                // Mapear pasajeros: solo los que calzan con nuestros vuelos (o se asume si tiene el vuelo_num)
+                const myFlightNums = flightsDB[currentUser].map(f => f.num);
+                paxDB[currentUser] = [];
+                if (pData) {
+                    pData.forEach(p => {
+                        if (myFlightNums.includes(p.vuelo_num)) {
+                            paxDB[currentUser].push({
+                                id: p.pax_id || Math.random(),
+                                name: p.pax_name || 'Desconocido',
+                                vuelo: p.vuelo_num,
+                                ssr: p.ssr,
+                                hora: flightsDB[currentUser].find(f => f.num === p.vuelo_num)?.hora || '--:--',
+                                estado: p.status_pax || 'En Espera',
+                                airlineCode: currentUser
+                            });
+                        }
+                    });
+                }
+
+                refreshFlightsTable();
+                refreshPaxTable();
+                refreshDashboard();
+            } catch (e) {
+                console.error("Error sincronizando DB", e);
+            }
+        }
+
+        // Charts instances
+        let cFlights = null;
+        let cPax = null;
+
+        // AUTHENTICATION
+        function checkLogin() {
+            const user = document.getElementById('loginUser').value.toLowerCase().trim();
+            const pass = document.getElementById('loginPass').value;
+            const err = document.getElementById('loginError');
+
+            if (AIRLINES[user] && AIRLINES[user].pass === pass) {
+                // Success
+                currentUser = user;
+
+                // Initialize db for airline if empty
+                if (!flightsDB[currentUser]) flightsDB[currentUser] = [];
+                if (!paxDB[currentUser]) paxDB[currentUser] = [];
+
+                document.getElementById('loginOverlay').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loginOverlay').style.display = 'none';
+                    document.getElementById('app').style.display = 'flex';
+                    initApp();
+                }, 400);
+            } else {
+                // Error
+                err.style.display = 'block';
+                setTimeout(() => err.style.display = 'none', 3000);
+            }
+        }
+
+        function logout() {
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('loginOverlay').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('loginOverlay').style.opacity = '1';
+                document.getElementById('loginUser').value = '';
+                document.getElementById('loginPass').value = '';
+                currentUser = null;
+            }, 50);
+        }
+
+        // INITIALIZE APP FOR CURRENT AIRLINE
+        function initApp() {
+            const alName = AIRLINES[currentUser].name;
+            document.getElementById('currentAirlineName').textContent = alName;
+            document.querySelectorAll('.airline-name-display').forEach(el => el.textContent = alName);
+            
+            // Form init
+            const aeroDisp = document.getElementById('vueloAeroDisplay');
+            if(aeroDisp) aeroDisp.value = alName;
+            const flightFecha = document.getElementById('vueloFecha');
+            if(flightFecha) flightFecha.value = new Date().toISOString().split('T')[0];
+            document.getElementById('setUsuario').value = currentUser.toUpperCase();
+            document.getElementById('setCorreo').value = AIRLINES[currentUser].email;
+
+            // Start clock
+            masterTick();
+
+            // Initialize gate options
+            updateGateOptions();
+
+            // Llenar arrays base y Refresh UI Cloud
+            flightsDB[currentUser] = [];
+            paxDB[currentUser] = [];
+            fetchSupabaseData();
+
+            // Auto refresco
+            setInterval(fetchSupabaseData, 15000);
+        }
+
+        // TABS
+        function showTab(id, btn) {
+            document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('page-' + id).classList.add('active');
+            btn.classList.add('active');
+
+            if (id === 'dashboard') refreshDashboard();
+        }
+
+        // THEME
+        let dark = true;
+        function toggleTheme() {
+            dark = !dark;
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+            document.getElementById('themeBtn').textContent = dark ? '🌙' : '☀️';
+            if (document.getElementById('page-dashboard').classList.contains('active')) {
+                refreshDashboard(); // re-render charts with correct colors
+            }
+        }
+
+        // ── GATE OPTIONS LOGIC ──
+        const GATES_EMBARQUE = [
+            'D01', 'D02', 'D03', 'D04', 'D05', 'D06', 'D07', 'D08', 'D09', 'D10',
+            'F01', 'F02', 'F03', 'F04', 'F05', 'F06', 'F07', 'F08', 'F09', 'F10',
+            'E01', 'E02', 'E03', 'E04', 'E05', 'E06', 'E07', 'E08', 'E09', 'E10', 'E11', 'E12',
+            'C01', 'C02', 'C03', 'C04', 'C05', 'C06', 'C07', 'C08', 'C09', 'C10', 'C11',
+            'A01', 'A02', 'A03', 'A04', 'A05', 'A06', 'A07', 'A08', 'A09', 'A10', 'A11', 'A12',
+            'A13', 'A14', 'A15', 'A16', 'REMOTO A17', 'REMOTO A18', 'REMOTO A19', 'REMOTO A20', 'REMOTO A21',
+            'B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08', 'B09',
+            'REMOTO B10', 'REMOTO B11', 'REMOTO B12', 'REMOTO B13', 'REMOTO B14', 'REMOTO B15', 'REMOTO B16', 'REMOTO B17'
+        ];
+        const GATES_ARRIBO = [
+            'D1', 'D2', 'D3A', 'D3B', 'D4A', 'D4B', 'D5A', 'D5B', 'D6A', 'D6B',
+            'E1A', 'E1B', 'E2A', 'E2B', 'E3A', 'E3B', 'E4A', 'E4B', 'E5A', 'E5B', 'E6A', 'E6B',
+            'F1', 'F2', 'F2A', 'F2B', 'F3A', 'F3B', 'F4A', 'F4B', 'F5A', 'F5B', 'F6A', 'F6B',
+            'A20A', 'A20B', 'A19', 'A18A', 'A18B', 'A17A', 'A17B', 'A16', 'A15A', 'A15B',
+            'A14A', 'A14B', 'A13A', 'A13B', 'A12A', 'A12B',
+            'B22', 'B21B', 'B21A', 'B23', 'B24', 'B25', 'B26', 'B27', 'B28',
+            'C1Q', 'C1B', 'C2A', 'C2B', 'C3A', 'C3B', 'C4A', 'C4B', 'C5A', 'C5B'
+        ];
+
+        function updateGateOptions() {
+            const tipo = document.getElementById('vueloTipo').value;
+            const gateSelect = document.getElementById('vueloGate');
+            const gates = tipo === 'EMBARQUE' ? GATES_EMBARQUE : GATES_ARRIBO;
+            gateSelect.innerHTML = '<option value="">-- Seleccionar Gate --</option>' +
+                gates.map(g => `<option value="${g}">${g}</option>`).join('');
+        }
+
+        // UTILS: CLOCK & WEATHER
+        function pad(n) { return String(n).padStart(2, '0'); }
+        function masterTick() {
+            const n = new Date(), h = n.getHours();
+            document.getElementById('clock').textContent = `${pad(h)}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+            document.getElementById('dateStr').textContent = `${['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'][n.getDay()]} ${n.getDate()} ${['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'][n.getMonth()]} ${n.getFullYear()}`;
+        }
+        setInterval(masterTick, 1000);
+
+        async function initWeather() {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=-33.39&longitude=-70.79&current_weather=true`);
+                const data = await res.json();
+                if (!data.current_weather) throw new Error("No data");
+                const temp = Math.round(data.current_weather.temperature);
+                document.getElementById('weatherTemp').textContent = temp + "°C";
+            } catch (e) { document.getElementById('weatherTemp').textContent = "--°C"; }
+        }
+        initWeather(); setInterval(initWeather, 300000);
+
+        // ── CSV UTILS ──
+        function downloadCSV(csv, filename) {
+            const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' }); // UTF-8 BOM
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ── FLIGHTS LOGIC ──
+        function exportarVuelos() {
+            const fl = flightsDB[currentUser] || [];
+            if (fl.length === 0) { alert("No hay vuelos para exportar."); return; }
+            let csv = "NumeroVuelo;Tipo;Terminal;Hora\n";
+            fl.forEach(f => { csv += `${f.num};${f.tipo};${f.ter};${f.hora}\n`; });
+            downloadCSV(csv, `vuelos_${currentUser}_${new Date().toISOString().split('T')[0]}.csv`);
+        }
+
+        async function importarVuelos(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); // Array of arrays
+
+                let payloads = [];
+                for (let i = 1; i < jsonData.length; i++) { // Skip header
+                    const row = jsonData[i];
+                    if (!row || row.length < 2) continue; // Al menos num y hora (?) o min 4
+
+                    // Columna A (0): Num Vuelo. Ej: AC93
+                    const num = row[0] ? String(row[0]).trim().toUpperCase() : '';
+                    if (!num) continue;
+
+                    // Columna B (1): Tipo. Ej: EMBARQUE / ARRIBO
+                    let tipoText = row[1] ? String(row[1]).trim().toUpperCase() : 'EMBARQUE';
+                    const tipo = tipoText.includes('ARR') || tipoText.includes('DESEM') ? 'DESEMBARQUE' : 'EMBARQUE';
+
+                    // Columna C (2): Terminal. Ej: T1/T2 o Nacional/Internacional
+                    let terText = row[2] ? String(row[2]).trim().toUpperCase() : 'NACIONAL';
+                    const ter = (terText.includes('INT') || terText.includes('T2')) ? 'INTERNACIONAL' : 'NACIONAL';
+
+                    // Columna D (3): Hora. Ej: 14:30
+                    let hora = row[3] ? String(row[3]).trim() : '';
+
+                    // Si por error la hora está en otra columna, detectamos formato HH:mm
+                    if (!hora.includes(':')) {
+                        // Buscamos una celda que parezca hora en la fila
+                        const foundHora = row.find(c => String(c).includes(':'));
+                        if (foundHora) hora = String(foundHora).trim();
+                    }
+
+                    const dateVal = new Date().toISOString().split('T')[0];
+                    if (num && hora && hora.includes(':')) {
+                        payloads.push({
+                            aerolinea_name: AIRLINES[currentUser].name,
+                            aerolinea_code: currentUser.substring(0, 2).toUpperCase(),
+                            vuelo_num: num,
+                            fecha: dateVal,
+                            hora_programada: hora,
+                            tipo: tipo,
+                            terminal: ter,
+                            gate: 'S/A'
+                        });
+                    }
+                }
+
+                if (payloads.length > 0) {
+                    document.body.style.cursor = 'wait';
+                    const { error } = await supabaseClient.from('vuelos').insert(payloads);
+                    document.body.style.cursor = 'default';
+
+                    if (error) {
+                        alert("Error subiendo masivo: " + error.message);
+                    } else {
+                        alert(`✅ Se importaron ${payloads.length} vuelos exitosamente.`);
+                        fetchSupabaseData(); // Refrescar base
+                    }
+                } else {
+                    alert("Asegúrate de que el archivo Excel tenga el formato (columnas exactas): NumeroVuelo, Tipo, Terminal, Hora");
+                }
+                document.getElementById('importFFile').value = ''; // Reset
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function crearVuelo() {
+            const num = document.getElementById('vueloNum').value.toUpperCase();
+            const tipo = document.getElementById('vueloTipo').value;
+            const ter = document.getElementById('vueloTer').value;
+            const hora = document.getElementById('vueloHora').value;
+            const gate = document.getElementById('vueloGate').value;
+            const fecha = document.getElementById('vueloFecha').value;
+            const rutaInput = document.getElementById('vueloRuta').value.toUpperCase().trim();
+            const rutaFinal = rutaInput ? `SCL -> ${rutaInput}` : 'SCL -> ???';
+
+            if (!num || !hora || !fecha) { alert("Completa Fecha, N° Vuelo y Hora."); return; }
+            if (!gate) { alert("Selecciona un Gate. Este campo es obligatorio."); return; }
+
+            document.body.style.cursor = 'wait'; // UX loader
+
+            const payload = {
+                vuelo_num: num,
+                fecha: fecha,
+                hora_programada: hora,
+                hora: hora, // Sync for older systems
+                tipo: tipo,
+                terminal: ter === 'Nacional' ? 'NACIONAL' : 'INTERNACIONAL',
+                gate: gate,
+                ruta: rutaFinal,
+                aerolinea_name: AIRLINES[currentUser].name,
+                aerolinea_code: currentUser.substring(0, 2).toUpperCase()
+            };
+
+            const { error } = await supabaseClient.from('vuelos').insert([payload]);
+            document.body.style.cursor = 'default';
+
+            if (error) {
+                alert("Error de guardado en la nube: " + error.message);
+                document.body.style.cursor = 'default';
+                return;
+            }
+
+            document.getElementById('vueloNum').value = '';
+            document.getElementById('vueloHora').value = '';
+            document.getElementById('vueloGate').value = '';
+            document.getElementById('vueloRuta').value = '';
+
+            fetchSupabaseData(); // Refresca las vistas desde la DB
+        }
+        function refreshFlightsTable() {
+            const fl = flightsDB[currentUser];
+            const tbody = document.getElementById('vuelosTableBody');
+            const selectVuelo = document.getElementById('paxVuelo');
+
+            if (fl.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px;">Sin vuelos registrados.</td></tr>`;
+            } else {
+                tbody.innerHTML = fl.map(f => {
+                    const paxCount = paxDB[currentUser] ? paxDB[currentUser].filter(p => p.vuelo === f.num).length : 0;
+                    const gateBadge = f.gate && f.gate !== 'S/A' ? `<span style="background:rgba(255,193,7,0.2); color:#ffc107; padding:4px 10px; border-radius:12px; font-weight:800; font-size: 0.8rem; border: 1px solid rgba(255,193,7,0.3);">${f.gate}</span>` : `<span style="color:var(--text3); font-size:0.7rem;">S/A</span>`;
+
+                    let logoUrl = 'https://imgur.com/vHStbH2.png';
+                    if (AIRLINES[currentUser] && AIRLINES[currentUser].name.includes('LATAM')) logoUrl = 'https://imgur.com/B7x2g8P.png';
+                    else if (AIRLINES[currentUser] && AIRLINES[currentUser].name.includes('DELTA')) logoUrl = 'https://imgur.com/m29344S.png';
+                    else if (AIRLINES[currentUser] && AIRLINES[currentUser].name.includes('SKY')) logoUrl = 'https://imgur.com/m1T72S5.png';
+
+                    const f_tipo_badge = f.tipo === 'ARRIBO'
+                        ? `<span style="display:inline-block; padding: 4px 10px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-radius: 8px; font-weight:700; font-size:0.7rem;">🛬 ARRIBO</span>`
+                        : `<span style="display:inline-block; padding: 4px 10px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; border-radius: 8px; font-weight:700; font-size:0.7rem;">🛫 EMBARQUE</span>`;
+
+                    return `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;">
+                        <td style="text-align: center; color: var(--text-secondary); font-size: 0.8rem;">${f.id || '-'}</td>
+                        <td><div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; display: inline-block;">📅 ${f.fecha ? f.fecha : 'Hoy'}</div></td>
+                        <td><div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; display: inline-block;">⏱️ ${f.hora}</div></td>
+                        <td style="text-align: center;">
+                            <div style="display:inline-flex; align-items:center; justify-content:center; gap:8px;">
+                                <img src="${logoUrl}" style="width:24px; border-radius:4px; height: 24px; object-fit: cover;">
+                                <b style="font-size: 0.75rem;">${AIRLINES[currentUser] ? AIRLINES[currentUser].name.substring(0, 10) : ''}</b>
+                            </div>
+                        </td>
+                        <td style="text-align: center;"><span style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(0,0,0,0)); color: #f87171; border-radius: 6px; padding: 4px 10px; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 800; font-size: 0.8rem;">${f.num}</span></td>
+                        <td style="font-size: 0.8rem; font-weight: 500;">${f.ter}</td>
+                        <td style="text-align: center;">${gateBadge}</td>
+                        <td style="text-align: center;">
+                            <div style="background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.75rem; border: 1px solid rgba(16, 185, 129, 0.3); display: inline-block;">
+                                ${paxCount} pax
+                            </div>
+                        </td>
+                        <td style="text-align: center;">${f_tipo_badge}</td>
+                        <td style="text-align: center;"><div style="background: rgba(255,255,255,0.03); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; color: var(--text2); border: 1px solid rgba(255,255,255,0.05);">${f.ruta}</div></td>
+                    </tr>`;
+                }).join('');
+            }
+
+            // Update Select in Passengers tab
+            selectVuelo.innerHTML = '<option value="">-- Seleccionar Vuelo --</option>' + fl.map(f => `<option value="${f.num}">${f.num} - ${f.hora}</option>`).join('');
+        }
+
+        // ── PASSENGERS LOGIC ──
+        function exportarPax() {
+            const px = paxDB[currentUser] || [];
+            if (px.length === 0) { alert("No hay pasajeros para exportar."); return; }
+            let csv = "Nombre;SSR;Vuelo\n";
+            px.forEach(p => { csv += `"${p.name}";${p.ssr};${p.vuelo}\n`; });
+            downloadCSV(csv, `pasajeros_${currentUser}_${new Date().toISOString().split('T')[0]}.csv`);
+        }
+
+        async function importarPax(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                let payloads = [];
+                let notFoundFlights = [];
+
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || row.length < 3) continue;
+
+                    const name = String(row[0]).trim();
+                    const ssr = String(row[1]).trim().toUpperCase();
+                    const vuelo = String(row[2]).trim().toUpperCase();
+
+                    if (!name || !ssr || !vuelo) continue;
+
+                    const vData = flightsDB[currentUser].find(f => f.num === vuelo);
+                    if (vData) {
+                        payloads.push({
+                            vuelo_num: vuelo,
+                            pax_name: name,
+                            ssr: ssr,
+                            category: vData.tipo === 'EMBARQUE' ? 'EMBARQUE' : 'ARRIBO',
+                            pax_id: 'PMR-' + Math.floor(Math.random() * 10000),
+                            status: 'pendiente',
+                            status_pax: 'En Espera',
+                            obs: 'Masivo Aerolínea'
+                        });
+                    } else {
+                        if (!notFoundFlights.includes(vuelo)) notFoundFlights.push(vuelo);
+                    }
+                }
+
+                if (payloads.length > 0) {
+                    document.body.style.cursor = 'wait';
+                    const { error } = await supabaseClient.from('asistencias').insert(payloads);
+                    document.body.style.cursor = 'default';
+
+                    if (!error) {
+                        let msg = `✅ Se importaron ${payloads.length} pasajeros PMR exitosamente a la nube.`;
+                        if (notFoundFlights.length > 0) msg += `\n⚠️ Vuelos NO vinculados (debes crearlos primero): ${notFoundFlights.join(', ')}.`;
+                        alert(msg);
+                        fetchSupabaseData(); // update ui
+                    } else {
+                        alert("Error Supabase: " + error.message);
+                    }
+                } else {
+                    alert("Formato esperado en columnas Excel: Nombre, SSR, Vuelo.\n⚠️ Asegúrate de que los Vuelos indicados YA EXISTAN en el sistema.");
+                }
+                document.getElementById('importPFile').value = ''; // Reset
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function crearPasajero() {
+            const name = document.getElementById('paxNombre').value;
+            const vuelo = document.getElementById('paxVuelo').value;
+            const ssr = document.getElementById('paxSsr').value;
+
+            if (!name || !vuelo) { alert("Nombre y Vuelo son requeridos."); return; }
+
+            const vData = flightsDB[currentUser].find(f => f.num === vuelo);
+            const paxIdGen = 'PMR-' + Math.floor(Math.random() * 10000);
+
+            document.body.style.cursor = 'wait';
+
+            const payload = {
+                vuelo_num: vuelo,
+                pax_name: name,
+                ssr: ssr,
+                category: vData ? vData.tipo : 'EMBARQUE',
+                pax_id: paxIdGen,
+                status: 'pendiente',
+                status_pax: 'En Espera',
+                obs: 'Creado desde Portal Aerolínea'
+            };
+
+            const { error } = await supabaseClient.from('asistencias').insert([payload]);
+            document.body.style.cursor = 'default';
+
+            if (error) {
+                alert("Error al guardar pasajero en la nube: " + error.message);
+                return;
+            }
+
+            document.getElementById('paxNombre').value = '';
+            fetchSupabaseData(); // Refrescar DB
+        }
+
+        function refreshPaxTable() {
+            const px = paxDB[currentUser];
+            const tbody = document.getElementById('paxTableBody');
+
+            if (px.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px;">Sin pasajeros registrados.</td></tr>`;
+            } else {
+                tbody.innerHTML = px.map(p => `
+                <tr>
+                    <td style="font-weight:700;">${p.name}</td>
+                    <td><span style="background:var(--blue-lt); color:var(--blue); padding:4px 8px; border-radius:4px; font-size:0.7rem; font-weight:800;">${p.ssr}</span></td>
+                    <td style="font-weight:800; color:var(--blue);">${p.vuelo}</td>
+                    <td>${p.hora}</td>
+                    <td><span style="background:var(--orange-lt); color:var(--orange); padding:4px 8px; border-radius:4px; font-size:0.7rem; font-weight:800;">PENDIENTE</span></td>
+                </tr>`).join('');
+            }
+        }
+
+        // ── DASHBOARD LOGIC ──
+        function refreshDashboard() {
+            const fl = flightsDB[currentUser] || [];
+            const px = paxDB[currentUser] || [];
+
+            const flightsNac = fl.filter(f => f.ter === 'Nacional').length;
+            const flightsInt = fl.filter(f => f.ter === 'Internacional').length;
+
+            const paxNac = px.filter(p => fl.find(f => f.num === p.vuelo)?.ter === 'Nacional').length;
+            const paxInt = px.filter(p => fl.find(f => f.num === p.vuelo)?.ter === 'Internacional').length;
+
+            // Update KPIs (Mock logic for atendidos/no atendidos based on random or 0 since it's blank start)
+            document.getElementById('kpiFlights').textContent = fl.length;
+            document.getElementById('kpiFlightsNac').textContent = flightsNac;
+            document.getElementById('kpiFlightsInt').textContent = flightsInt;
+
+            document.getElementById('kpiFlightsAtt').textContent = 0; // Mock 0 until connected to ops
+            document.getElementById('kpiFlightsComp').textContent = 0;
+            document.getElementById('kpiFlightsPend').textContent = fl.length;
+
+            document.getElementById('kpiPax').textContent = px.length;
+            document.getElementById('kpiPaxNac').textContent = paxNac;
+            document.getElementById('kpiPaxInt').textContent = paxInt;
+
+            document.getElementById('kpiPaxAtt').textContent = 0;
+            document.getElementById('kpiPaxPend').textContent = px.length;
+
+            renderCharts(flightsNac, flightsInt, paxNac, paxInt);
+        }
+
+        function renderCharts(fn, fi, pn, pi) {
+            const chartColText = dark ? '#f8fafc' : '#0f172a';
+            const chartGrid = dark ? '#2a3b54' : '#e2e8f0';
+
+            Chart.defaults.color = chartColText;
+            Chart.defaults.font.family = "'Inter', sans-serif";
+
+            if (cFlights) cFlights.destroy();
+            if (cPax) cPax.destroy();
+
+            const ctxF = document.getElementById('flightsChart').getContext('2d');
+            cFlights = new Chart(ctxF, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Nacional', 'Internacional'],
+                    datasets: [{
+                        data: [fn, fi],
+                        backgroundColor: ['#3b82f6', '#f97316'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { maintainAspectRatio: false, plugins: { title: { display: true, text: 'Distribución Vuelos', color: chartColText } } }
+            });
+
+            const ctxP = document.getElementById('paxChart').getContext('2d');
+            cPax = new Chart(ctxP, {
+                type: 'bar',
+                data: {
+                    labels: ['Nacional', 'Internacional'],
+                    datasets: [{
+                        label: 'Pasajeros PMR',
+                        data: [pn, pi],
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, title: { display: true, text: 'Pasajeros por Terminal', color: chartColText } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: chartGrid }, ticks: { stepSize: 1 } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // ── SETTINGS LOGIC ──
+        function guardarAjustes() {
+            const email = document.getElementById('setCorreo').value;
+            const p1 = document.getElementById('setPass1').value;
+            const p2 = document.getElementById('setPass2').value;
+
+            if (p1 || p2) {
+                if (p1 !== p2) {
+                    alert("Las contraseñas no coinciden.");
+                    return;
+                }
+                AIRLINES[currentUser].pass = p1;
+            }
+
+            AIRLINES[currentUser].email = email;
+
+            document.getElementById('setPass1').value = '';
+            document.getElementById('setPass2').value = '';
+
+            const msg = document.getElementById('settingsMsg');
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 3000);
+        }
+
+    </script>
+</body>
+
+</html>

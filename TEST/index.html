@@ -1,0 +1,2333 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web PMR | Panel de Operaciones Supervisor/CDO</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            const user = JSON.parse(localStorage.getItem('webPmr_user'));
+            const supervisorRoles = ['cdo', 'supervisor', 'jefatura', 'administrador'];
+            if (!user) {
+                console.warn("⛔ SIN SESIÓN: Redirigiendo a Login");
+                window.location.href = 'Login.html';
+                return;
+            }
+            
+            const role = (user.rol || '').toLowerCase();
+            if (!supervisorRoles.includes(role)) {
+                console.warn("⛔ NO ES SUPERVISOR: Redirigiendo a Login");
+                window.location.href = 'Login.html';
+            }
+        })();
+    </script>
+</head>
+
+<body class="dark-mode">
+
+    <div class="ambient-sphere sphere-1"></div>
+    <div class="ambient-sphere sphere-2"></div>
+
+    <!-- 
+      --------------------------------------------------------------------------------
+      ESTRUCTURA PRINCIPAL (APP CONTAINER)
+      Agrupa el sidebar y el contenido principal.
+      --------------------------------------------------------------------------------
+    -->
+    <div class="app-container">
+
+        <!-- 
+          --------------------------------------------------------------------------------
+          SIDEBAR NAVIGATION MODULE
+          Menú lateral con acceso a las pestañas principales. 
+          Diseño en cuadrícula de 2 columnas + botón ancho al final.
+          --------------------------------------------------------------------------------
+        -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="brand">
+                    <div class="brand-logo">
+                        <span style="font-weight: 900; color: white;">PMR</span>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Web PMR</h1>
+                        <span>Panel Supervisor</span>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-menu">
+                <div class="menu-item active item-dashboard" onclick="switchTab('dashboard', this)">
+                    <span class="icon">📊</span>
+                    <span class="label">Dashboard</span>
+                </div>
+                <div class="menu-item item-vuelos" onclick="switchTab('vuelos', this)">
+                    <span class="icon">✈️</span>
+                    <span class="label">VUELOS</span>
+                </div>
+                <div class="menu-item item-tramos" onclick="switchTab('tramos', this)">
+                    <span class="icon">🛣️</span>
+                    <span class="label">Tramos</span>
+                </div>
+                <div class="menu-item item-pasajeros" onclick="switchTab('pasajeros', this)">
+                    <span class="icon">♿</span>
+                    <span class="label">Pasajeros PMR</span>
+                </div>
+                <div class="menu-item item-asignaciones" onclick="switchTab('asignaciones', this)">
+                    <span class="icon">📋</span>
+                    <span class="label">Asignaciones</span>
+                </div>
+                <div class="menu-item item-agentes" onclick="switchTab('agentes', this)">
+                    <span class="icon">🧑‍✈️</span>
+                    <span class="label">Agentes</span>
+                </div>
+                <div class="menu-item item-timeline" onclick="switchTab('timeline', this)">
+                    <span class="icon">⏰</span>
+                    <span class="label">Timeline</span>
+                </div>
+                <div class="menu-item item-ajustes" onclick="switchTab('ajustes', this)">
+                    <span class="icon">⚙️</span>
+                    <span class="label">Ajustes</span>
+                </div>
+                <!-- Botón 1x2 (Ancho completo) -->
+                <div class="menu-item wide item-ayuda" onclick="switchTab('ayuda', this)">
+                    <span class="icon">❓</span>
+                    <span class="label">¿Cómo se usa?</span>
+                </div>
+                <div class="menu-item wide item-logout" onclick="logoutUser()">
+                    <span class="icon">🚪</span>
+                    <span class="label">Cerrar Sesión</span>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- 
+          --------------------------------------------------------------------------------
+          TOPBAR MODULE
+          Información en tiempo real y utilidades del sistema.
+          --------------------------------------------------------------------------------
+        -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <!-- Botón Menú Móvil -->
+                <button class="mobile-nav-toggle" id="menu-toggle">☰</button>
+
+                <!-- Widget Reloj -->
+                <div class="widget">
+                    <span class="widget-icon">🕒</span>
+                    <div class="widget-content">
+                        <span class="widget-label" id="date-label">HOY, 02 ABR 2026</span>
+                        <span class="widget-value" id="clock-value">12:30:45</span>
+                    </div>
+                </div>
+                <!-- Widget Clima -->
+                <div class="widget">
+                    <span class="widget-icon" id="weather-icon">☁️</span>
+                    <div class="widget-content">
+                        <span class="widget-label" id="weather-label">PUDAHUEL, SCL</span>
+                        <span class="widget-value" id="weather-temp">22°C - Nublado</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="topbar-widgets">
+                <!-- Indicador de Turno -->
+                <div class="shift-badge" id="shift-badge">TURNO: MAÑANA</div>
+
+                <!-- Estado Base de Datos -->
+                <div class="db-status connected" id="db-status">
+                    <div class="status-dot"></div>
+                    <span id="db-text">CONECTADO</span>
+                </div>
+
+                <!-- Selector de Tema -->
+                <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">
+                    🌙
+                </button>
+            </div>
+        </header>
+
+        <!-- 
+          --------------------------------------------------------------------------------
+          CONTENIDO PRINCIPAL (MAIN CONTENT)
+          Aquí se renderizan dinámicamente las pestañas.
+          --------------------------------------------------------------------------------
+        -->
+        <main class="main-content">
+
+            <!-- 
+              --------------------------------------------------------------------------------
+              PESTAÑA: DASHBOARD
+              Resumen operativo de la jornada, vuelos próximos y estado de personal.
+              --------------------------------------------------------------------------------
+            -->
+            <section id="dashboard" class="tab-content active">
+                <!-- 
+                  HEADER: DASHBOARD (Estilo imagen de referencia)
+                -->
+                <div class="dashboard-banner">
+                    <div class="banner-icon-box">
+                        <img src="https://cdn-icons-png.flaticon.com/512/1055/1055644.png" alt="Icon" width="30">
+                    </div>
+                    <div class="banner-text">
+                        <h2>DASHBOARD</h2>
+                        <p>Resumen operativo en tiempo real · <span id="banner-date">02/04/2026</span></p>
+                    </div>
+                </div>
+
+                <!-- 
+                  METRICS GRID: RESUMEN OPERACIONAL
+                  Visualización de KPIs principales del día.
+                -->
+                <div class="metrics-grid">
+                    <div class="metric-card card-blue">
+                        <div class="metric-header">
+                            <span class="metric-label">Total Asistencias</span>
+                            <span class="metric-icon">📊</span>
+                        </div>
+                        <div class="metric-value" id="top-kpi-total-assist">0</div>
+                        <div class="metric-trend">
+                            <span style="font-weight:300; opacity:0.7;">Presentes (00:00 - 23:59)</span>
+                        </div>
+                    </div>
+                    <div class="metric-card card-orange">
+                        <div class="metric-header">
+                            <span class="metric-label">En Colación</span>
+                            <span class="metric-icon">🥨</span>
+                        </div>
+                        <div class="metric-value" id="top-kpi-agents-lunch">0</div>
+                        <div class="metric-trend">
+                            <span>Agentes en descanso legal</span>
+                        </div>
+                    </div>
+                    <div class="metric-card card-green">
+                        <div class="metric-header">
+                            <span class="metric-label">Agentes Disponibles</span>
+                            <span class="metric-icon">🟢</span>
+                        </div>
+                        <div class="metric-value" id="top-kpi-agents-available">0</div>
+                        <div class="metric-trend">
+                            <span>Libres p/asignación directa</span>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- 
+                  METRICS GRID: DISTRIBUCIÓN Y AUSENCIAS
+                  Detalle por aerolínea y estado administrativo.
+                -->
+                <div class="metrics-grid">
+                    <div class="metric-card card-red" id="kpi-card-latam">
+                        <div class="metric-header">
+                            <span class="metric-label">Agentes LATAM</span>
+                            <span class="metric-icon">✈️</span>
+                        </div>
+                        <div class="metric-value" id="kpi-val-latam">0</div>
+                    </div>
+                    <div class="metric-card card-blue" id="kpi-card-ola">
+                        <div class="metric-header">
+                            <span class="metric-label">Agentes OLA</span>
+                            <span class="metric-icon">🌐</span>
+                        </div>
+                        <div class="metric-value" id="kpi-val-ola">0</div>
+                    </div>
+                    <div class="metric-card card-pink" id="kpi-card-tica">
+                        <div class="metric-header">
+                            <span class="metric-label">Con TICA / Sin TICA</span>
+                            <span class="metric-icon">🆔</span>
+                        </div>
+                        <div class="metric-value" id="kpi-val-tica">0 / 0</div>
+                    </div>
+                    <div class="metric-card card-orange" style="background: rgba(239, 68, 68, 0.05);"
+                        id="kpi-card-absent">
+                        <div class="metric-header">
+                            <span class="metric-label">Ausencias del Día</span>
+                            <span class="metric-icon">✖️</span>
+                        </div>
+                        <div class="metric-value" id="kpi-val-absent">0</div>
+                        <div class="metric-trend trend-down" id="kpi-absent-trend">LATAM: 0 | OLA: 0</div>
+                    </div>
+                </div>
+
+                <!-- 
+                  FLIGHT TIMELINES
+                  Cronograma horizontal de próximos vuelos.
+                -->
+                <div class="panel-section">
+                    <div class="section-header">
+                        <h3>✈️ Próximos 10 Vuelos LATAM (LA)</h3>
+                    </div>
+                    <div class="flight-timeline" id="latam-flights">
+                        <!-- Renderizado dinámico vía JS -->
+                    </div>
+                    <div class="timeline-controls">
+                        <button class="btn-nav-timeline" onclick="changeTimelinePage('latam', -1)" id="btn-prev-latam"
+                            disabled>⬅️ Anterior</button>
+                        <button class="btn-nav-timeline" onclick="changeTimelinePage('latam', 1)"
+                            id="btn-next-latam">Siguiente ➡️</button>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-header">
+                        <h3>🌐 Próximos 10 Vuelos Otras Aerolíneas</h3>
+                    </div>
+                    <div class="flight-timeline" id="other-flights">
+                        <!-- Renderizado dinámico vía JS -->
+                    </div>
+                    <div class="timeline-controls">
+                        <button class="btn-nav-timeline" onclick="changeTimelinePage('other', -1)" id="btn-prev-other"
+                            disabled>⬅️ Anterior</button>
+                        <button class="btn-nav-timeline" onclick="changeTimelinePage('other', 1)"
+                            id="btn-next-other">Siguiente ➡️</button>
+                    </div>
+                </div>
+
+                <!-- 
+                  AGENT SUPERVISION (3 COLUMNAS)
+                  Disponibles | En Colación | Ausentes
+                -->
+                <div class="agent-supervision-grid" style="grid-template-columns: repeat(3, 1fr) !important;">
+                    <!-- Disponibles -->
+                    <div class="agent-list-panel">
+                        <div class="section-header">
+                            <div class="status-dot-large green"></div>
+                            <h3>DISPONIBLES</h3>
+                        </div>
+                        <div class="agent-list-container green" id="available-agents">
+                            <!-- JS Render -->
+                        </div>
+                    </div>
+
+                    <!-- En Colación -->
+                    <div class="agent-list-panel">
+                        <div class="section-header">
+                            <div class="status-dot-large orange"></div>
+                            <h3>EN COLACIÓN</h3>
+                        </div>
+                        <div class="agent-list-container orange" id="break-agents">
+                            <!-- JS Render -->
+                        </div>
+                    </div>
+
+
+                    <!-- Ausentes -->
+                    <div class="agent-list-panel">
+                        <div class="section-header">
+                            <div class="status-dot-large red"></div>
+                            <h3>AUSENTES</h3>
+                        </div>
+                        <div class="agent-list-container red" id="absent-agents">
+                            <!-- JS Render -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VUELOS TAB: LISTADO GENERAL -->
+            <section id="vuelos" class="tab-content">
+                <div class="panel-section">
+                    <div class="dashboard-banner">
+                        <div class="banner-icon-box">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3125/3125713.png" alt="Vuelos" width="30">
+                        </div>
+                        <div class="banner-text">
+                            <h2>LISTADO GENERAL DE OPERACIONES</h2>
+                            <p>Registro consolidado de Arribos y Embarques (24 Horas)</p>
+                        </div>
+                    </div>
+
+                    <div class="flight-filters-dashboard">
+                        <div class="filters-main">
+                            <div class="filter-group">
+                                <label>🔎 N° de Vuelo</label>
+                                <input type="text" placeholder="Ej: LA123..." class="search-input-fancy"
+                                    id="search-flight-num">
+                            </div>
+                            <div class="filter-group">
+                                <label>📅 Fecha Operativa</label>
+                                <input type="date" class="search-input-fancy" id="search-flight-date">
+                            </div>
+                        </div>
+
+                        <div class="airline-visual-filter">
+                            <label>🛫 Filtro por Aerolínea (Grilla 7x2)</label>
+                            <div class="airline-grid-filter" id="airline-filter-container">
+                                <!-- JS Renders logos here -->
+                            </div>
+                        </div>
+
+                        <div class="action-hub" style="flex: 2;">
+                            <label style="font-size:0.7rem; font-weight:800; color:var(--accent-blue);">✈️ GESTIÓN DE VUELOS</label>
+                            <div class="action-buttons-row">
+                                <button class="btn-save" style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 0.75rem 1rem; font-size: 0.75rem;" onclick="openAddFlightModal()">
+                                    <span class="btn-icon">➕</span>
+                                    <b>CREAR VUELO</b>
+                                </button>
+                                <button class="btn-excel" onclick="document.getElementById('file-vuelos-bulk').click()">
+                                    <span class="btn-icon">📂</span>
+                                    <b>CARGA MASIVA</b>
+                                </button>
+                                <button class="btn-excel" style="background: linear-gradient(135deg, #64748b, #475569); box-shadow: 0 4px 12px rgba(71, 85, 105, 0.25);" onclick="downloadFlightTemplate()">
+                                    <span class="btn-icon">📝</span>
+                                    <b>PLANTILLA</b>
+                                </button>
+                                <input type="file" id="file-vuelos-bulk" style="display:none;" accept=".xlsx, .xls, .csv" onchange="importFlightsBulk(this)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="ops-table" id="table-vuelos-main">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">ID</th>
+                                    <th>FECHA</th>
+                                    <th>HORA</th>
+                                    <th style="text-align: center;">AEROLÍNEA</th>
+                                    <th style="text-align: center;">N° VUELO</th>
+                                    <th>TERMINAL</th>
+                                    <th style="text-align: center;">GATE</th>
+                                    <th style="text-align: center;">PMR</th>
+                                    <th style="text-align: center;">SERVICIO</th>
+                                    <th>RUTA</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vuelos-table-body">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRAMOS TAB: GESTIÓN DE PMR -->
+            <section id="tramos" class="tab-content">
+                <div class="panel-section">
+                    <div class="dashboard-banner">
+                        <div class="banner-icon-box">
+                            <img src="https://cdn-icons-png.flaticon.com/512/1041/1041014.png" alt="Tramos" width="30">
+                        </div>
+                        <div class="banner-text">
+                            <h2>GESTIÓN DE TRAMOS Y PASAJEROS PMR</h2>
+                            <p>Control detallado de asistencias en tiempo real (Base de Datos)</p>
+                        </div>
+                    </div>
+
+                    <div class="flight-filters-dashboard">
+                        <div class="filters-main">
+                            <div class="filter-group">
+                                <label>🔎 Filtrar Vuelo</label>
+                                <input type="text" list="tramos-flights-list" class="search-input-fancy"
+                                    id="filter-tramos-flight" placeholder="Escribe N° o Selecciona...">
+                                <datalist id="tramos-flights-list">
+                                    <!-- JS Populates -->
+                                </datalist>
+                            </div>
+                            <div class="filter-group">
+                                <label>📅 Fecha</label>
+                                <input type="date" value="2026-04-02" class="search-input-fancy"
+                                    id="filter-tramos-date">
+                            </div>
+                        </div>
+
+                        <div class="airline-visual-filter">
+                            <label>🛫 Seleccionar Aerolínea (Grilla 7x2)</label>
+                            <div class="airline-grid-tramos" id="tramos-airline-filter">
+                                <!-- JS Renders -->
+                            </div>
+                        </div>
+
+                        <div class="action-hub">
+                            <label>⚡ ACCIÓN</label>
+                            <div class="action-buttons-row">
+                                <button class="btn-excel" onclick="exportTramosXLS()">
+                                    <span class="btn-icon">📊</span>
+                                    <b>XLS REGISTRO</b>
+                                </button>
+                                <button class="btn-add-pmr" onclick="openAddPmrModal()">
+                                    <span class="plus-icon">+</span> AGREGAR PMR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="ops-table table-tramos" id="table-tramos-main">
+                            <thead>
+                                <tr>
+                                    <th>✈️ VUELO</th>
+                                    <th>🕒 HORA</th>
+                                    <th>🚨 TIPO</th>
+                                    <th>👤 PAX</th>
+                                    <th style="text-align: center;">♿ SSR</th>
+                                    <th>📍 TOMADO EN</th>
+                                    <th>🏁 DEJADO EN</th>
+                                    <th style="text-align: center;">🕒 ULT INFO</th>
+                                    <th>🦺 AGENTE</th>
+                                    <th style="text-align: center;">⏱️ ESTADO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tramos-table-body">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 
+               MODAL: AGREGAR PMR 
+            -->
+            <div id="modal-pmr" class="modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>➕ Agregar Pasajero PMR (Manual)</h3>
+                        <button class="close-modal" onclick="closeModal('modal-pmr')">&times;</button>
+                    </div>
+                    <form id="form-add-pmr" onsubmit="savePmr(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>✈️ Vuelo</label>
+                                <input type="text" id="field-vuelo" placeholder="Ej: LA530" required
+                                    class="search-input-fancy" list="vuelos-datalist" style="width: 100%;">
+                                <datalist id="vuelos-datalist">
+                                    <!-- Cargar dinámicamente -->
+                                </datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>👤 PAX (Nombre completo)</label>
+                                <input type="text" id="field-pax" placeholder="Ej: Ian Kevin Saavedra B" required
+                                    class="search-input-fancy" style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>🕒 Hora</label>
+                                <input type="time" id="field-hora" required class="search-input-fancy"
+                                    style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>♿ SSR</label>
+                                <select id="field-ssr" required class="search-input-fancy" style="width: 100%;">
+                                    <option value="WCHR">WCHR (Rampa)</option>
+                                    <option value="WCHS">WCHS (Escaleras)</option>
+                                    <option value="WCHC">WCHC (Cabina)</option>
+                                    <option value="UMNR">UMNR (Menor no Acompañado)</option>
+                                    <option value="MAAS">MAAS (Encuentro y Asistencia)</option>
+                                    <option value="WCMP">WCMP (Silla Manual)</option>
+                                    <option value="MEDA">MEDA (Médico)</option>
+                                    <option value="DPNA">DPNA (Necesidades Especiales)</option>
+                                    <option value="BLND">BLND (Ciego)</option>
+                                    <option value="DEAF">DEAF (Sordo)</option>
+                                    <option value="WCOB">WCOB (Silla a bordo)</option>
+                                    <option value="OTRO">OTRO</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>📍 TOMADO EN</label>
+                                <select id="field-tomado" required class="search-input-fancy" style="width: 100%;">
+                                    <option value="Puente Arribo">Puente Arribo</option>
+                                    <option value="Punto T1">Punto T1</option>
+                                    <option value="Punto T2">Punto T2</option>
+                                    <option value="Embarque A">Embarque A</option>
+                                    <option value="Embarque B">Embarque B</option>
+                                    <option value="Embarque C">Embarque C</option>
+                                    <option value="Embarque D">Embarque D</option>
+                                    <option value="Embarque E">Embarque E</option>
+                                    <option value="Embarque F">Embarque F</option>
+                                    <option value="Salon VIP">Salon VIP</option>
+                                    <option value="Minsal">Minsal</option>
+                                    <option value="Plaza Central">Plaza Central</option>
+                                    <option value="Conexiones">Conexiones</option>
+                                    <option value="Salida AMB">Salida AMB</option>
+                                    <option value="Counters">Counters</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>🏁 DEJADO EN</label>
+                                <select id="field-dejado" required class="search-input-fancy" style="width: 100%;">
+                                    <option value="Puente Arribo">Puente Arribo</option>
+                                    <option value="Punto T1">Punto T1</option>
+                                    <option value="Punto T2">Punto T2</option>
+                                    <option value="Embarque A">Embarque A</option>
+                                    <option value="Embarque B">Embarque B</option>
+                                    <option value="Embarque C">Embarque C</option>
+                                    <option value="Embarque D">Embarque D</option>
+                                    <option value="Embarque E">Embarque E</option>
+                                    <option value="Embarque F">Embarque F</option>
+                                    <option value="Salon VIP">Salon VIP</option>
+                                    <option value="Minsal">Minsal</option>
+                                    <option value="Plaza Central">Plaza Central</option>
+                                    <option value="Conexiones">Conexiones</option>
+                                    <option value="Salida AMB">Salida AMB</option>
+                                    <option value="Counters">Counters</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>⏱️ ESTADO INICIAL</label>
+                                <select id="field-estado" required class="search-input-fancy" style="width: 100%;">
+                                    <option value="En Espera">⏰ En Espera</option>
+                                    <option value="Contactado">🟢 Contactado</option>
+                                    <option value="En Trayecto">🧑‍🦼 En Trayecto</option>
+                                    <option value="No Contactado">⛔ No Contactado</option>
+                                    <option value="No Requiere">🚶‍♂️ No Requiere</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>🦺 Agente Creador</label>
+                                <input type="text" id="field-agente-auto" value="CDO/SPVR (Sistema)" readonly
+                                    class="search-input-fancy" style="width: 100%; opacity: 0.7;">
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 2rem;">
+                            <button type="button" class="btn-cancel" onclick="closeModal('modal-pmr')">Cancelar</button>
+                            <button type="submit" class="btn-save">Guardar PMR</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- MODAL: AGREGAR/EDITAR VUELO (Manual) -->
+            <div id="modal-vuelo" class="modal-overlay">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>✈️ Registrar Nuevo Vuelo</h3>
+                        <button class="close-modal" onclick="closeModal('modal-vuelo')">&times;</button>
+                    </div>
+                    <form id="form-add-flight" onsubmit="saveFlightManual(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>N° de Vuelo</label>
+                                <input type="text" id="v-num" placeholder="Ej: LA530" required class="search-input-fancy" style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>Aerolínea</label>
+                                <select id="v-airline" required class="search-input-fancy" style="width: 100%;">
+                                    <option value="LATAM">LATAM</option>
+                                    <option value="DELTA">DELTA</option>
+                                    <option value="AIR CANADA">AIR CANADA</option>
+                                    <option value="AIR FRANCE">AIR FRANCE</option>
+                                    <option value="AVIANCA">AVIANCA</option>
+                                    <option value="ARAJET">ARAJET</option>
+                                    <option value="KLM">KLM</option>
+                                    <option value="COPA">COPA</option>
+                                    <option value="IBERIA">IBERIA</option>
+                                    <option value="UNITED">UNITED</option>
+                                    <option value="AMERICAN">AMERICAN</option>
+                                    <option value="SKY">SKY AIRLINE</option>
+                                    <option value="JETSMART">JETSMART</option>
+                                    <option value="OTRA">OTRA</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo de Operación</label>
+                                <select id="v-type" required class="search-input-fancy" style="width: 100%;">
+                                    <option value="ARRIBO">🛬 ARRIBO</option>
+                                    <option value="EMBARQUE">🛫 EMBARQUE</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Hora Programada</label>
+                                <input type="time" id="v-time" required class="search-input-fancy" style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha</label>
+                                <input type="date" id="v-date" required class="search-input-fancy" style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>Terminal</label>
+                                <select id="v-terminal" class="search-input-fancy" style="width: 100%;">
+                                    <option value="T1">Terminal 1 (Nacional)</option>
+                                    <option value="T2">Terminal 2 (Internacional)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Puerta / Gate</label>
+                                <input type="text" id="v-gate" placeholder="Ej: C12" class="search-input-fancy" style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label>Ruta</label>
+                                <input type="text" id="v-route" placeholder="Ej: SCL - MDZ" class="search-input-fancy" style="width: 100%;">
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-cancel" onclick="closeModal('modal-vuelo')">Cancelar</button>
+                            <button type="submit" class="btn-save">Guardar Vuelo</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- PASAJEROS PMR TAB: DIRECTORIO COMPLETO -->
+            <section id="pasajeros" class="tab-content">
+                <div class="panel-section">
+                    <div class="dashboard-banner">
+                        <div class="banner-icon-box">
+                            <img src="https://cdn-icons-png.flaticon.com/512/1055/1055644.png" alt="Icon" width="30">
+                        </div>
+                        <div class="banner-text">
+                            <h2>PASAJEROS PMR</h2>
+                            <p>Directorio completo de pasajeros del día desde la hora actual</p>
+                        </div>
+                    </div>
+
+                    <!-- KPI GRID 1: Personal y Distribución -->
+                    <div class="metrics-grid">
+                        <div class="metric-card card-blue">
+                            <div class="metric-header">
+                                <span class="metric-label">PMR NAC.</span>
+                                <span class="metric-icon">🗺️</span>
+                            </div>
+                            <div class="metric-value" id="kpi-pmr-nac">0</div>
+                            <div class="metric-trend">Terminal Nacional</div>
+                        </div>
+                        <div class="metric-card card-blue">
+                            <div class="metric-header">
+                                <span class="metric-label">PMR INT.</span>
+                                <span class="metric-icon">🌎</span>
+                            </div>
+                            <div class="metric-value" id="kpi-pmr-int">0</div>
+                            <div class="metric-trend">Terminal Internacional</div>
+                        </div>
+                        <div class="metric-card card-orange">
+                            <div class="metric-header">
+                                <span class="metric-label">AGENTES NAC.</span>
+                                <span class="metric-icon">🦺</span>
+                            </div>
+                            <div class="metric-value" id="kpi-ag-nac">0</div>
+                            <div class="metric-trend">Disponibles Nacional</div>
+                        </div>
+                        <div class="metric-card card-orange">
+                            <div class="metric-header">
+                                <span class="metric-label">AGENTES INT.</span>
+                                <span class="metric-icon">🦺</span>
+                            </div>
+                            <div class="metric-value" id="kpi-ag-int">0</div>
+                            <div class="metric-trend">Disponibles Internacional</div>
+                        </div>
+                    </div>
+
+                    <!-- KPI GRID 2: Estado de Asistencias -->
+                    <div class="metrics-grid">
+                        <div class="metric-card card-purple">
+                            <div class="metric-header">
+                                <span class="metric-label">SILLAS TOTALES</span>
+                                <span class="metric-icon">♿</span>
+                            </div>
+                            <div class="metric-value" id="kpi-sillas-tot">0</div>
+                            <div class="metric-trend">WCHR/S/C (Nac+Int)</div>
+                        </div>
+                        <div class="metric-card card-green">
+                            <div class="metric-header">
+                                <span class="metric-label">ACEPTADOS</span>
+                                <span class="metric-icon">✅</span>
+                            </div>
+                            <div class="metric-value" id="kpi-pax-ok">0</div>
+                            <div class="metric-trend">En Trayecto / Contactado</div>
+                        </div>
+                        <div class="metric-card card-red">
+                            <div class="metric-header">
+                                <span class="metric-label">CANCELADOS</span>
+                                <span class="metric-icon">🚫</span>
+                            </div>
+                            <div class="metric-value" id="kpi-pax-no">0</div>
+                            <div class="metric-trend">No Requiere</div>
+                        </div>
+                        <div class="metric-card card-red" style="background: rgba(239, 68, 68, 0.05);">
+                            <div class="metric-header">
+                                <span class="metric-label">NO CONTACTADOS</span>
+                                <span class="metric-icon">⛔</span>
+                            </div>
+                            <div class="metric-value" id="kpi-pax-fail">0</div>
+                            <div class="metric-trend">En Espera / Fallidos</div>
+                        </div>
+                    </div>
+
+                    <div class="flight-filters-dashboard">
+                        <div class="filters-main">
+                            <div class="filter-group">
+                                <label>🛫 Aerolínea</label>
+                                <select class="search-input-fancy" id="filter-pax-airline">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>✈️ Vuelo</label>
+                                <select class="search-input-fancy" id="filter-pax-flight">
+                                    <option value="">Todos los Vuelos</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label>📅 Fecha</label>
+                                <input type="date" class="search-input-fancy" id="filter-pax-date">
+                            </div>
+                        </div>
+                        <div class="action-buttons-row">
+                            <button class="btn-excel" onclick="exportPax()">Exportar a Excel</button>
+                            <button class="btn-save" style="background: #3b82f6;" onclick="openAddPmrModal()">➕ Agregar
+                                Manual</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="ops-table">
+                            <thead>
+                                <tr>
+                                    <th>🆔 ID PMR</th>
+                                    <th>✈️ VUELO</th>
+                                    <th>🕒 HORA</th>
+                                    <th>🧘 TIPO</th>
+                                    <th>👤 NOMBRE</th>
+                                    <th>♿ SSR</th>
+                                    <th>⏱️ ESTADO</th>
+                                    <th>🦺 ASIGNAR</th>
+                                    <th>📝 OBS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pax-table-body">
+                                <!-- Dinámico -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="asignaciones" class="tab-content">
+                <div class="panel-section">
+                    <div class="dashboard-banner">
+                        <div class="banner-icon-box">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" alt="Icon" width="30">
+                        </div>
+                        <div class="banner-text">
+                            <h2>MÓDULO DE ASIGNACIONES</h2>
+                            <p>Auditoría y trazabilidad de tareas de agentes en terreno</p>
+                        </div>
+                    </div>
+
+                    <!-- KPI GRID: Auditoría de Tareas -->
+                    <div class="metrics-grid" style="grid-template-columns: repeat(6, 1fr);">
+                        <div class="metric-card card-blue">
+                            <div class="metric-label">ASIGNADAS</div>
+                            <div class="metric-value" id="kpi-task-total">0</div>
+                            <div class="metric-trend">Tareas creadas hoy</div>
+                        </div>
+                        <div class="metric-card card-orange">
+                            <div class="metric-label">EN PROCESO</div>
+                            <div class="metric-value" id="kpi-task-process">0</div>
+                            <div class="metric-trend">Iniciadas/Aceptadas</div>
+                        </div>
+                        <div class="metric-card card-green">
+                            <div class="metric-label">TERMINADAS</div>
+                            <div class="metric-value" id="kpi-task-ok">0</div>
+                            <div class="metric-trend">Finalizadas con éxito</div>
+                        </div>
+                        <div class="metric-card card-red">
+                            <div class="metric-label">CANCEL./INACT.</div>
+                            <div class="metric-value" id="kpi-task-fail">0</div>
+                            <div class="metric-trend">Por inactividad</div>
+                        </div>
+                        <div class="metric-card card-purple">
+                            <div class="metric-label">EN COLACIÓN</div>
+                            <div class="metric-value" id="kpi-task-break">0</div>
+                            <div class="metric-trend">Agentes en descanso</div>
+                        </div>
+                        <div class="metric-card card-red" style="background: rgba(239,68,68,0.05);">
+                            <div class="metric-label">ALERTAS</div>
+                            <div class="metric-value" id="kpi-task-alert">0</div>
+                            <div class="metric-trend">Inactivos o Excedidos</div>
+                        </div>
+                    </div>
+
+                    <div class="flight-filters-dashboard" style="display: block;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <select class="search-input-fancy" id="filter-task-flight">
+                                <option value="">Todos los Vuelos</option>
+                            </select>
+                            <input type="date" class="search-input-fancy" id="filter-task-date">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <select class="search-input-fancy" id="filter-task-type">
+                                <option value="">Tipo Traslado (Todos)</option>
+                                <option value="Tramo Completo">Tramo Completo</option>
+                                <option value="Última Milla">Última Milla</option>
+                            </select>
+                            <select class="search-input-fancy" id="filter-task-status">
+                                <option value="">Estados (Todos)</option>
+                                <option value="En Espera">En Espera</option>
+                                <option value="Contactado">Contactado</option>
+                                <option value="Terminado">Terminado</option>
+                            </select>
+                        </div>
+                        <div class="action-buttons-row" style="justify-content: flex-end; gap: 1rem;">
+                            <button class="btn-excel" style="background: rgba(255,255,255,0.05); color: white;"
+                                onclick="alert('Exportando...')">📑 Exportar a Excel</button>
+                            <button class="btn-save"
+                                style="background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 12px; font-size: 0.9rem;"
+                                onclick="openNewGeneralTaskModal()">➕ Nueva Tarea</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table class="ops-table">
+                            <thead>
+                                <tr>
+                                    <th>✈️ VUELO</th>
+                                    <th>🆔 ID PMR</th>
+                                    <th>🦺 AGENTE</th>
+                                    <th>🎯 TAREA</th>
+                                    <th>📅 FECHA</th>
+                                    <th>🕒 ASIGNADO</th>
+                                    <th>🦺 ASIGNADO POR</th>
+                                    <th>🕒 ULT INFO</th>
+                                    <th>⏱️ ESTADO</th>
+                                    <th style="padding: 1rem 0.5rem; text-align: center;">⚙️ ACCIÓN</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-table-body">
+                                <tr>
+                                    <td colspan="9" style="text-align:center; padding: 40px; opacity: 0.5;">No hay
+                                        asignaciones para estos criterios.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            <section id="agentes" class="tab-content">
+                <div class="panel-section">
+                    <div class="dashboard-banner">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="banner-icon-box">
+                                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Agents"
+                                    width="30">
+                            </div>
+                            <div class="banner-text">
+                                <h2>GESTIÓN DE AGENTES</h2>
+                                <p>Directorio, asistencia y control operativo</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid" style="margin-bottom: 25px;">
+                        <div class="metric-card card-blue"
+                            style="background: rgba(30, 41, 59, 0.4); border-left: 4px solid #3b82f6;">
+                            <div class="metric-header">
+                                <span class="metric-label">TOTAL REGISTRADOS</span>
+                                <span class="metric-icon">📋</span>
+                            </div>
+                            <div class="metric-value" id="kpi-agent-total">0</div>
+                            <div class="metric-trend">En base de datos</div>
+                        </div>
+                        <div class="metric-card card-green"
+                            style="background: rgba(30, 41, 59, 0.4); border-left: 4px solid #10b981;">
+                            <div class="metric-header">
+                                <span class="metric-label">PRESENTES HOY</span>
+                                <span class="metric-icon">✅</span>
+                            </div>
+                            <div class="metric-value" id="kpi-agent-present">0</div>
+                            <div class="metric-trend">Turno activo</div>
+                        </div>
+                        <div class="metric-card card-orange"
+                            style="background: rgba(30, 41, 59, 0.4); border-left: 4px solid #f59e0b;">
+                            <div class="metric-header">
+                                <span class="metric-label">EN COLACIÓN</span>
+                                <span class="metric-icon">🛌</span>
+                            </div>
+                            <div class="metric-value" id="kpi-agent-lunch">0</div>
+                            <div class="metric-trend">Descanso legal</div>
+                        </div>
+                        <div class="metric-card card-red"
+                            style="background: rgba(30, 41, 59, 0.4); border-left: 4px solid #ef4444;">
+                            <div class="metric-header">
+                                <span class="metric-label">ALERTAS / AUSENTES</span>
+                                <span class="metric-icon">⚠️</span>
+                            </div>
+                            <div class="metric-value" id="kpi-agent-alert">0</div>
+                            <div class="metric-trend">Requiere revisión</div>
+                        </div>
+                    </div>
+
+                    <div class="tab-subnav" style="margin-bottom: 25px; display: flex; gap: 10px;">
+                        <button id="btn-sub-assist" class="btn-tab-sub active" onclick="switchAgentSubTab('assist')">📊
+                            Asistencia Diaria</button>
+                        <button id="btn-sub-rol" class="btn-tab-sub" onclick="switchAgentSubTab('rol')">🗓️ Rol /
+                            Turno</button>
+                        <button id="btn-sub-database" class="btn-tab-sub" onclick="switchAgentSubTab('database')">📂
+                            Base de Datos</button>
+                    </div>
+
+                    <!-- Paginación estilo Excel (Fechas) -->
+                    <div id="date-pagination-container"
+                        style="display: none; gap: 8px; margin-bottom: 20px; padding: 10px; background: rgba(15,23,42,0.4); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); overflow-x: auto; white-space: nowrap;">
+                        <!-- Renderizado dinámico de fechas 1 Abr, 2 Abr... -->
+                    </div>
+
+                    <!-- SUB-VISTA 1: ASISTENCIA (Y FILTROS) -->
+                    <div id="agents-subview-assist">
+                        <div class="flight-filters-dashboard" style="margin-bottom: 25px;">
+                            <div class="filters-main"
+                                style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="filter-group">
+                                    <input type="text" id="filter-agent-name" class="search-input-fancy"
+                                        placeholder="🔍 Filtrar por Nombre..." style="width: 100%;"
+                                        oninput="renderAgentsDirectory(activeAgentSubTab)">
+                                </div>
+                                <div class="filter-group">
+                                    <input type="text" id="filter-agent-id" class="search-input-fancy"
+                                        placeholder="🔍 Filtrar por ID [Ej. AG-001]..." style="width: 100%;"
+                                        oninput="renderAgentsDirectory(activeAgentSubTab)">
+                                </div>
+                            </div>
+                            <div class="action-buttons-row" style="gap: 10px; flex-wrap: wrap;">
+                                <input type="file" id="import-daily-assist-input" style="display:none;"
+                                    onchange="importDailyAssistExcel(event)" accept=".xlsx, .xls">
+                                <button class="btn-save"
+                                    style="background:var(--accent-orange); color:#fff; border:none; padding:10px 20px; border-radius:8px; font-weight:700;"
+                                    onclick="document.getElementById('import-daily-assist-input').click()">📥 Actualizar
+                                    Diario (XLS)</button>
+                                <button class="btn-excel" onclick="exportAgentsXLS()">📈 Exportar Lista</button>
+                                <button class="btn-save"
+                                    style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700;"
+                                    onclick="openAddAgent()">➕ Agregar Agente</button>
+                            </div>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="ops-table">
+                                <thead>
+                                    <tr>
+                                        <!-- Se llena dinámicamente -->
+                                    </tr>
+                                </thead>
+                                <tbody id="agents-table-body">
+                                    <!-- Se llena dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- SUB-VISTA 2: ROL / TURNO -->
+                    <!-- SUB-VISTA 2: ROL / TURNO (OBSOLETO - MOVIDO A AJUSTES) -->
+                    <div id="agents-subview-rol" style="display: none; padding: 40px; text-align: center;">
+                        <p style="opacity:0.5;">Esta función se ha movido a <b>Ajustes > Config. Turnos</b> para una
+                            mejor organización.</p>
+                        <button class="btn-save" style="background:var(--accent-blue); margin-top:15px;"
+                            onclick="switchTab('ajustes', document.querySelector('.item-ajustes')); switchSettingsView('turnos')">Ir
+                            a Config. Turnos ⚙️</button>
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <h4 style="display: flex; align-items: center; gap: 10px; font-weight: 800;">
+                            🚙 TRANSPORTE Y MOVILIZACIÓN
+                        </h4>
+                        <div
+                            style="background: rgba(15,23,42,0.4); padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.05);">
+                            <p style="margin: 0; opacity: 0.6; font-size: 0.85rem;">Muestra automáticamente los
+                                servicios de Zarpe / Recogida según las reglas de horario operativo nocturno y días
+                                domingo.</p>
+                            <button class="btn-excel"
+                                style="background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1); font-size: 0.8rem;"
+                                onclick="exportMobilizationXLS()">📊 Descargar Excel Movilización</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="timeline" class="tab-content">
+                <div class="panel-section">
+                    <div class="dashboard-banner">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <div class="banner-icon-box">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/3239/3239240.png" alt="Timeline"
+                                        width="30">
+                                </div>
+                                <div class="banner-text">
+                                    <h2>TIMELINE DE VUELOS</h2>
+                                    <p>Vista operacional por bloques horarios · Se actualiza automáticamente</p>
+                                </div>
+                            </div>
+                            <button class="btn-save" style="background: var(--accent-blue);"
+                                onclick="renderTimelineTab()">🔄 Actualizar</button>
+                        </div>
+                    </div>
+
+                    <h4
+                        style="margin-bottom: 20px; font-weight: 800; font-size: 0.75rem; letter-spacing: 1px; color: var(--text-secondary);">
+                        👥 BALANCE DE PERSONAL — RESTO DEL DÍA</h4>
+                    <div class="metrics-grid"
+                        style="grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 30px;">
+                        <div class="metric-card card-green"
+                            style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(16, 185, 129, 0.3);">
+                            <div class="metric-label" style="font-size: 0.6rem;">✅ AGENTES DISPONIBLES</div>
+                            <div class="metric-value" id="time-available">0</div>
+                            <p style="font-size: 0.65rem; opacity: 0.6; margin-top: 5px;">Sin asignación activa</p>
+                        </div>
+                        <div class="metric-card card-blue"
+                            style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(59, 130, 246, 0.3);">
+                            <div class="metric-label" style="font-size: 0.6rem;">🗳️ EN SERVICIO</div>
+                            <div class="metric-value" id="time-in-service">0</div>
+                            <p style="font-size: 0.65rem; opacity: 0.6; margin-top: 5px;">Con tarea asignada</p>
+                        </div>
+                        <div class="metric-card card-orange"
+                            style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(245, 158, 11, 0.3);">
+                            <div class="metric-label" style="font-size: 0.6rem;">☕ EN COLACIÓN</div>
+                            <div class="metric-value" id="time-lunch">0</div>
+                            <p style="font-size: 0.65rem; opacity: 0.6; margin-top: 5px;">Tiempo de descanso</p>
+                        </div>
+                        <div class="metric-card card-red"
+                            style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(239, 68, 68, 0.3);">
+                            <div class="metric-label" style="font-size: 0.6rem;">🪰 SALEN DE TURNO (2H)</div>
+                            <div class="metric-value" id="time-leaving">--</div>
+                            <p style="font-size: 0.65rem; opacity: 0.6; margin-top: 5px;">Próxima rotación</p>
+                        </div>
+                        <div class="metric-card card-purple"
+                            style="background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(139, 92, 246, 0.3);">
+                            <div class="metric-label" style="font-size: 0.6rem;">🟢 INGRESAN A TURNO (2H)</div>
+                            <div class="metric-value" id="time-joining">--</div>
+                            <p style="font-size: 0.65rem; opacity: 0.6; margin-top: 5px;">Próximos ingresos</p>
+                        </div>
+                    </div>
+
+                    <h4
+                        style="margin-bottom: 15px; font-weight: 800; font-size: 0.75rem; color: var(--text-secondary);">
+                        📊 ASISTENCIAS ESPERADAS POR HORA VS DOTACIÓN DISPONIBLE</h4>
+                    <div class="table-container"
+                        style="margin-bottom: 40px; background: rgba(15,23,42,0.6); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); overflow-x: auto;">
+                        <table class="ops-table" style="width: 100%; min-width: 1000px;">
+                            <thead>
+                                <tr>
+                                    <th>HORA</th>
+                                    <th>PMR ESPERADOS 🟠 VS DOTACIÓN 🟢</th>
+                                    <th>PMR / VUELOS</th>
+                                    <th>BALANCE</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timeline-hourly-body">
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding: 20px; opacity: 0.5;">No hay
+                                        vuelos registrados hoy.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4
+                        style="margin-bottom: 20px; font-weight: 800; font-size: 0.75rem; color: var(--text-secondary);">
+                        ⏰ VUELOS DEL DÍA — BLOQUES HORARIOS</h4>
+                    <div id="timeline-vuelos-paged"
+                        style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                        <div style="grid-column: 1/-1; text-align: center; padding: 60px; opacity: 0.4;">
+                            <img src="https://cdn-icons-png.flaticon.com/512/2921/2921226.png" width="60"
+                                style="filter: grayscale(1); margin-bottom: 15px;">
+                            <p>No se encontraron vuelos para la fecha actual en el sistema.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="ajustes" class="tab-content" style="padding: 2.5rem; max-width: 1400px;">
+                <div class="panel-header" style="margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <div
+                            style="width: 60px; height: 60px; background: rgba(59, 130, 246, 0.1); border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            ⚙️</div>
+                        <div>
+                            <h2 style="font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px; margin: 0;">Panel
+                                Hero: Ajustes Maestros</h2>
+                            <p style="opacity: 0.6; font-size: 0.85rem; margin-top: 4px;">Configuración avanzada de
+                                RRHH, CRUDs operativos y gamificación del sistema.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="aj-tabs">
+                    <button class="aj-tab active" onclick="switchSettingsView('kpis')">📊 KPIs Generales</button>
+                    <button class="aj-tab" onclick="switchSettingsView('rrhh')">👥 RRHH PMR</button>
+                    <button class="aj-tab" onclick="switchSettingsView('crud-ag')">🧑‍✈️ CRUD Agentes</button>
+                    <button class="aj-tab" onclick="switchSettingsView('crud-fl')">✈️ CRUD Vuelos</button>
+                    <button class="aj-tab" onclick="switchSettingsView('aero')">🏢 Aerolíneas</button>
+                    <button class="aj-tab" onclick="switchSettingsView('ssr')">♿ Códigos SSR</button>
+                    <button class="aj-tab" onclick="switchSettingsView('loc')">📍 Ubicaciones</button>
+                    <button class="aj-tab" onclick="switchSettingsView('turnos')">⏰ Config. Turnos</button>
+                    <button class="aj-tab" onclick="switchSettingsView('rpg')">⚔️ RPG / Gamificación</button>
+                    <button class="aj-tab" onclick="switchSettingsView('dl')">📥 Descargas</button>
+                    <button class="aj-tab" onclick="switchSettingsView('permisos')">🔐 Permisos</button>
+                </div>
+
+                <div class="panel-sections-stack" style="margin-top: 25px;">
+                    <!-- VISTA PERMISOS -->
+                    <div id="settings-view-permisos" class="settings-sub-view">
+                        <div class="panel-header" style="margin-bottom: 20px;">
+                            <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--text-primary); margin: 0;">Gestión de Permisos de Acceso</h3>
+                            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 5px;">Habilita ingreso al Dashboard para agentes y selecciona qué pestañas ocultarles individualmente.</p>
+                        </div>
+                        
+                        <div class="table-container" style="background: var(--bg-primary); border-radius: 12px; padding: 10px;">
+                            <table class="ops-table">
+                                <thead>
+                                    <tr>
+                                        <th>AGENTE</th>
+                                        <th style="text-align: center;">ACCESO DASHBOARD</th>
+                                        <th>OCULTAR PESTAÑAS</th>
+                                        <th style="text-align: center;">ACCIÓN</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="permisos-table-body">
+                                    <!-- Dinámico vía JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="settings-view-kpis" class="settings-sub-view active">
+                        <div class="aj-kpi-grid"
+                            style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 25px;">
+                            <div class="aj-kpi-card blue">
+                                <div class="aj-kpi-lbl">TOTAL ASISTENCIAS MES</div>
+                                <div class="aj-kpi-val">1,248</div>
+                                <div style="font-size: 0.7rem; color: #10b981; margin-top: 8px; font-weight: 800;">↑ 12%
+                                    vs anterior</div>
+                            </div>
+                            <div class="aj-kpi-card green">
+                                <div class="aj-kpi-lbl">PROMEDIO ATENCIÓN</div>
+                                <div class="aj-kpi-val">28m</div>
+                                <div style="font-size: 0.7rem; opacity: 0.6; margin-top: 8px; font-weight: 800;">Meta: <
+                                        35m</div>
+                                </div>
+                                <div class="aj-kpi-card orange">
+                                    <div class="aj-kpi-lbl">AGENTES TOP ACTIVOS</div>
+                                    <div class="aj-kpi-val">12</div>
+                                    <div style="font-size: 0.7rem; opacity: 0.6; margin-top: 8px; font-weight: 800;">
+                                        Turno Mañana</div>
+                                </div>
+                                <div class="aj-kpi-card red">
+                                    <div class="aj-kpi-lbl">EFICIENCIA GLOBAL</div>
+                                    <div class="aj-kpi-val">94%</div>
+                                    <div style="font-size: 0.7rem; color: #10b981; margin-top: 8px; font-weight: 800;">↑
+                                        2% de mejora</div>
+                                </div>
+                            </div>
+
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-top:1px solid var(--border-color); padding-top:25px; margin-top:20px;">
+                                <div class="sec-lbl" style="margin:0;">📊 PANEL DE TELEMETRÍA OPERATIVA (KPIs)</div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn-save"
+                                        style="background:#10b981; padding:10px 20px; font-size:0.75rem;"
+                                        onclick="exportKPIToExcel()">📥 Exportar Excel</button>
+                                    <button class="btn-save"
+                                        style="background:#ef4444; padding:10px 20px; font-size:0.75rem;"
+                                        onclick="exportKPIToPDF()">📄 Generar PDF</button>
+                                </div>
+                            </div>
+
+                            <div class="aj-kpi-grid"
+                                style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-bottom: 30px;">
+                                <div class="card-glass-vibrant" style="padding: 25px;">
+                                    <div class="sec-lbl">📈 OTP-PMR (On-Time Performance)</div>
+                                    <div style="height: 240px; position: relative;">
+                                        <canvas id="chart-otp-pmr"></canvas>
+                                    </div>
+                                    <div class="kpi-desc"
+                                        style="font-size:0.75rem; color:var(--text-secondary); margin-top:15px; border-top:1px solid var(--border-color); padding-top:10px;">
+                                        <b>¿Para qué sirve?</b> Garantiza que el SLA de atención sea inferior a 5
+                                        min.<br>
+                                        <b>¿Por qué se utiliza?</b> Para eliminar el error humano en la estimación de
+                                        distancias y optimizar el Smart Dispatch.
+                                    </div>
+                                </div>
+                                <div class="card-glass-vibrant" style="padding: 25px;">
+                                    <div class="sec-lbl">⏱️ TAT-DEPLANING (Avg. Minutes)</div>
+                                    <div style="height: 240px; position: relative;">
+                                        <canvas id="chart-tat-deplaning"></canvas>
+                                    </div>
+                                    <div class="kpi-desc"
+                                        style="font-size:0.75rem; color:var(--text-secondary); margin-top:15px; border-top:1px solid var(--border-color); padding-top:10px;">
+                                        <b>¿Para qué sirve?</b> Detectar cuellos de botella geográficos que las tablas
+                                        ocultan.<br>
+                                        <b>¿Por qué se utiliza?</b> Para la planificación estratégica y detección de
+                                        fallos de infraestructura en T1/T2.
+                                    </div>
+                                </div>
+                                <div class="card-glass-vibrant" style="padding: 25px;">
+                                    <div class="sec-lbl">⚡ REACTIVA vs PROACTIVA (Asignación)</div>
+                                    <div style="height: 240px; position: relative;">
+                                        <canvas id="chart-assignment-type"></canvas>
+                                    </div>
+                                    <div class="kpi-desc"
+                                        style="font-size:0.75rem; color:var(--text-secondary); margin-top:15px; border-top:1px solid var(--border-color); padding-top:10px;">
+                                        <b>¿Para qué sirve?</b> Visualiza la gestión por excepción de la IA.<br>
+                                        <b>¿Por qué se utiliza?</b> Eleva la productividad en un 25% detectando tareas
+                                        sin intervención manual del supervisor.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="aj-kpi-grid" style="grid-template-columns: 2fr 1fr; margin-bottom: 30px;">
+                                <div class="card-glass-vibrant" style="padding: 25px;">
+                                    <div class="sec-lbl">🗺️ HEATMAP DE CONGESTIÓN GEO-OPERATIVA</div>
+                                    <div class="heatmap-bg-override"
+                                        style="height:350px; background: url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'60\' height=\'60\'><path d=\'M0 0L60 60M60 0L0 60\' stroke=\'rgba(255,255,255,0.03)\' stroke-width=\'1\'/></svg>'), linear-gradient(135deg, rgba(30,41,59,0.7), rgba(15,23,42,0.9)); border-radius:15px; position:relative; overflow:hidden; border: 1px solid rgba(255,255,255,0.1);">
+                                        <div id="heatmap-container" style="width:100%; height:100%;"></div>
+                                        <div
+                                            style="position:absolute; top:20px; left:20px; font-size:0.75rem; color:var(--text-primary); background:var(--glass-bg); padding:12px 18px; border-radius:10px; border: 1px solid var(--border-color); backdrop-filter: blur(10px); box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                                            <strong
+                                                style="display:block; margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px; font-family:var(--font-accent);">LEYENDA
+                                                DE INTENSIDAD</strong>
+                                            <span style="color:#ef4444; display:block; margin-bottom:4px;">🔴 Alta
+                                                (Cuello de Botella)</span>
+                                            <span style="color:#f59e0b; display:block; margin-bottom:4px;">🟡 Media
+                                                (Flujo Lento)</span>
+                                            <span style="color:#3b82f6; display:block;">🔵 Baja (Despejado)</span>
+                                        </div>
+                                        <div
+                                            style="position:absolute; bottom:20px; right:20px; font-size:0.8rem; color:var(--accent-blue); background:rgba(0,0,0,0.7); padding:8px 15px; border-radius:8px; border: 1px solid rgba(59,130,246,0.3); font-weight:800; backdrop-filter: blur(5px);">
+                                            📍 SANTIAGO (SCL) - MAPA TERMINALES</div>
+                                    </div>
+                                </div>
+                                <div class="card-glass-vibrant" style="padding: 25px;">
+                                    <div class="sec-lbl">🛡️ SAFETY RATE (Incidentes / 1000 pax)</div>
+                                    <div style="height: 180px; position: relative;">
+                                        <canvas id="chart-safety-rate"></canvas>
+                                    </div>
+                                    <div class="kpi-desc"
+                                        style="font-size:0.75rem; color:var(--text-secondary); margin-top:15px; border-top:1px solid var(--border-color); padding-top:10px;">
+                                        <b>¿Para qué sirve?</b> Cumplimiento diario de estándares ISAGO de IATA.<br>
+                                        <b>¿Por qué se utiliza?</b> Blindar a CargoMobility contra penalizaciones
+                                        comerciales y legales por seguridad en rampa.
+                                    </div>
+                                    <div style="margin-top:20px;">
+                                        <div class="aj-kpi-lbl">NPS OPERATIVO</div>
+                                        <div class="aj-kpi-val" id="kpi-nps-score" style="color:var(--accent-cyan);">
+                                            95.4%</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="aj-kpi-grid"
+                                style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                                <div class="card-glass-vibrant" style="padding: 20px;">
+                                    <div class="sec-lbl">📉 FORECAST PASAJEROS (24H)</div>
+                                    <div style="height: 180px; position: relative;">
+                                        <canvas id="chart-pax-forecast"></canvas>
+                                    </div>
+                                    <div class="kpi-desc"
+                                        style="font-size:0.7rem; color:var(--text-secondary); margin-top:15px;">
+                                        <b>Utilidad:</b> Optimización financiera del staff ajustando cambios de turno
+                                        según demanda real proyectada.
+                                    </div>
+                                </div>
+                                <div class="card-glass-vibrant" style="padding: 20px;">
+                                    <div class="sec-lbl"
+                                        style="border-bottom: 2px solid rgba(16, 185, 129, 0.3); padding-bottom: 8px;">
+                                        🌳 GREEN-LOG (Huella Ecológica)</div>
+                                    <div
+                                        style="text-align:center; padding:10px; height: 180px; display: flex; flex-direction: column; justify-content: space-evenly;">
+                                        <div style="display:flex; justify-content:space-around; align-items:center;">
+                                            <div>
+                                                <span style="font-size:2rem;">🌳</span>
+                                                <div class="aj-kpi-val"
+                                                    style="color:var(--accent-green); font-size:1.5rem;">14</div>
+                                                <div class="aj-kpi-lbl" style="font-size:0.7rem;">Árboles Salvados</div>
+                                            </div>
+                                            <div>
+                                                <span style="font-size:2rem;">💧</span>
+                                                <div class="aj-kpi-val" style="color:#3b82f6; font-size:1.5rem;">140L
+                                                </div>
+                                                <div class="aj-kpi-lbl" style="font-size:0.7rem;">Agua Preservada</div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            style="background: rgba(16, 185, 129, 0.1); border: 1px dashed rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px; margin-top: 10px;">
+                                            <span style="font-size:1.1rem; vertical-align:middle;">💰</span>
+                                            <span
+                                                style="font-size:0.8rem; font-weight:800; color:var(--text-primary); vertical-align:middle;">Ahorro
+                                                Equivalente: </span>
+                                            <span
+                                                style="font-size:0.85rem; font-weight:900; color:var(--accent-green); vertical-align:middle;">~$1,250
+                                                USD</span>
+                                            <p style="font-size:0.65rem; opacity:0.7; margin: 4px 0 0 0;">En papel
+                                                impreso y logística diaria</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-glass-vibrant" style="padding: 20px;">
+                                    <div class="sec-lbl">⏳ ESPERA EN COUNTER (Promedio)</div>
+                                    <div style="height: 150px; position: relative;">
+                                        <canvas id="gauge-counter-wait"></canvas>
+                                    </div>
+                                    <div style="text-align:center; font-weight:800; color:var(--accent-orange); margin-top: -20px;"
+                                        id="counter-wait-label">12.5 MIN</div>
+                                    <div class="kpi-desc"
+                                        style="font-size:0.7rem; color:var(--text-secondary); margin-top:15px;">
+                                        <b>Utilidad:</b> Optimización extrema del staff permitiendo reasignar agentes
+                                        durante colapsos externos en counters.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="sec-lbl" style="margin-top: 40px;">📅 ANÁLISIS DE TENDENCIA SLOT vs ATA</div>
+                            <div class="card-glass-vibrant" style="padding: 25px; margin-bottom: 20px;">
+                                <div style="height: 350px; position: relative;">
+                                    <canvas id="chart-slot-vs-ata"></canvas>
+                                </div>
+                            </div>
+                            <div class="idea-card .justification"
+                                style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 40px; border-left: 4px solid var(--accent-blue); padding-left: 20px;">
+                                Un gráfico de tendencia que compare cuándo debió llegar el avión, cuándo llegó realmente
+                                y cuánto tardó CargoMobility en entregar al pasajero permite identificar fallos
+                                sistémicos. Es tu escudo defensivo basado en Big Data operativo ante reclamos de
+                                aerolíneas.
+                            </div>
+                        </div>
+
+                        <div id="settings-view-rrhh" class="settings-sub-view">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                                <div class="sec-lbl" style="margin:0;">🚨 ALERTAS CRÍTICAS DE RRHH</div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn-save"
+                                        style="background:#10b981; padding:10px 20px; font-size:0.75rem;"
+                                        onclick="exportRRHHToExcel()">📥 Reporte Semanal (.XLS)</button>
+                                    <button class="btn-save"
+                                        style="background:#8b5cf6; padding:10px 20px; font-size:0.75rem;"
+                                        onclick="downloadLicensesZip()">📦 Pack Licencias (.ZIP)</button>
+                                </div>
+                            </div>
+                            <div id="rrhh-alerts-list" class="alert-stack-modern">
+                                <!-- Alertas dinámicas: Ausencias, Atrasos, Tareas Rechazadas, TICA por vencer -->
+                            </div>
+
+                            <div class="sec-lbl" style="margin-top:35px;">❌ AUSENCIAS DEL MES</div>
+                            <div class="card-glass-vibrant"
+                                style="padding: 0; overflow: hidden; border-radius: 16px; margin-bottom:30px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID AGENTE</th>
+                                            <th>NOMBRE</th>
+                                            <th>EQUIPO</th>
+                                            <th>FECHA</th>
+                                            <th>MOTIVO</th>
+                                            <th>N° AUSENCIAS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rrhh-absents-table"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="sec-lbl">📤 RENUNCIAS DEL MES</div>
+                            <div class="card-glass-vibrant"
+                                style="padding: 0; overflow: hidden; border-radius: 16px; margin-bottom:30px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID AGENTE</th>
+                                            <th>NOMBRE</th>
+                                            <th>EQUIPO</th>
+                                            <th>FECHA</th>
+                                            <th>COMUNICADO</th>
+                                            <th>ÚLTIMO DÍA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rrhh-renuncias-table"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="sec-lbl">🏥 LICENCIAS DEL MES</div>
+                            <div class="card-glass-vibrant"
+                                style="padding: 0; overflow: hidden; border-radius: 16px; margin-bottom:30px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID AGENTE</th>
+                                            <th>NOMBRE</th>
+                                            <th>EQUIPO</th>
+                                            <th>TIPO / DESDE-HASTA</th>
+                                            <th>DÍAS</th>
+                                            <th>ESTADO</th>
+                                            <th>ADJUNTOS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rrhh-licencias-table"></tbody>
+                                </table>
+                            </div>
+
+                            <div class="sec-lbl">⏰ ATRASOS DEL MES</div>
+                            <div class="card-glass-vibrant" style="padding: 0; overflow: hidden; border-radius: 16px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID AGENTE</th>
+                                            <th>NOMBRE</th>
+                                            <th>EQUIPO</th>
+                                            <th>FECHA</th>
+                                            <th>TURNO</th>
+                                            <th>HORA LLEGADA</th>
+                                            <th>MINUTOS ATRASO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rrhh-atrasos-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-crud-ag" class="settings-sub-view">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                                <div class="sec-lbl">🧑‍✈️ GESTIÓN DE DIRECTORIO DE AGENTES</div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn-save"
+                                        style="padding: 10px 20px; font-size: 0.8rem; background: #3b82f6;"
+                                        onclick="downloadRolTemplate()">📈 Descargar Plantilla</button>
+                                    <button class="btn-save"
+                                        style="padding: 10px 20px; font-size: 0.8rem; background: #ea580c;"
+                                        onclick="document.getElementById('import-agent-input').click()">📥 Importar XLS</button>
+                                    <button class="btn-save"
+                                        style="padding: 10px 20px; font-size: 0.8rem; background: #64748b;"
+                                        onclick="exportAgentsXLS()">📤 Exportar Listado</button>
+                                    <button class="btn-save"
+                                        style="padding: 10px 20px; font-size: 0.8rem; background: #6b7280;"
+                                        onclick="normalizeAllAgentIDs()">🛡️ Normalizar IDs</button>
+                                    <button class="btn-save"
+                                        style="padding: 10px 20px; font-size: 0.8rem; background: var(--accent-blue);"
+                                        onclick="openAddAgent()">➕ Nuevo Agente</button>
+                                </div>
+                            </div>
+                            <div class="card-glass-vibrant" style="padding: 0; overflow-x: auto; border-radius: 16px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID AGENTE</th>
+                                            <th>NOMBRE</th>
+                                            <th>RUT</th>
+                                            <th>EQUIPO</th>
+                                            <th>TELÉFONO</th>
+                                            <th>DIRECCIÓN</th>
+                                            <th>N°</th>
+                                            <th>COMUNA</th>
+                                            <th>TALLA</th>
+                                            <th>SEXO</th>
+                                            <th>ACCIÓN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="crud-agentes-table"></tbody>
+                                </table>
+                            </div>
+                            <input type="file" id="import-agent-input" style="display:none;"
+                                onchange="importAgentsFromExcel(event)" accept=".xlsx, .xls">
+                        </div>
+
+                        <div id="settings-view-crud-fl" class="settings-sub-view">
+                            <div
+                                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                                <div class="sec-lbl">✈️ CONTROL DE ITINERARIOS Y VUELOS</div>
+                                <button class="btn-save"
+                                    style="padding: 10px 20px; font-size: 0.8rem; background: var(--accent-blue);">➕
+                                    Agregar Vuelo</button>
+                            </div>
+                            <div class="card-glass-vibrant" style="padding: 0; overflow: hidden; border-radius: 16px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>N° VUELO</th>
+                                            <th>AEROLÍNEA</th>
+                                            <th>TIPO</th>
+                                            <th>SCH</th>
+                                            <th>GATE</th>
+                                            <th>PMR</th>
+                                            <th>ITIN.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="crud-vuelos-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-aero" class="settings-sub-view">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                                <div class="sec-lbl">🏢 GESTIÓN DE AEROLÍNEAS ASOCIADAS</div>
+                                <button class="btn-save" style="padding: 10px 20px; font-size: 0.8rem; background: var(--accent-blue);" onclick="openAeroModal()">➕ Agregar Aerolínea</button>
+                            </div>
+                            <div class="card-glass-vibrant" style="padding: 0; overflow: hidden; border-radius: 16px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>PREFIJO</th>
+                                            <th>NOMBRE AEROLÍNEA</th>
+                                            <th>ESTACIÓN BASE</th>
+                                            <th>ACCIONES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="aero-list-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-ssr" class="settings-sub-view">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                                <div class="sec-lbl">♿ CONFIGURACIÓN DE CÓDIGOS SSR</div>
+                                <button class="btn-save" style="padding: 10px 20px; font-size: 0.8rem; background: var(--accent-purple);" onclick="openSSRModal()">➕ Agregar SSR</button>
+                            </div>
+                            <div class="card-glass-vibrant" style="padding: 0; overflow: hidden; border-radius: 16px;">
+                                <table class="pmr-table">
+                                    <thead>
+                                        <tr>
+                                            <th>CÓDIGO</th>
+                                            <th>DESCRIPCIÓN OPERATIVA</th>
+                                            <th>COLOR</th>
+                                            <th>TAG PREVISUALIZACIÓN</th>
+                                            <th>ACCIONES</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ssr-list-table"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-loc" class="settings-sub-view">
+                            <div class="sec-lbl">📍 GESTIÓN DE PUNTOS DE TOMA Y ENTREGA</div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                                <div class="card-glass-vibrant" style="padding: 24px;">
+                                    <h5 style="color: var(--accent-blue); margin-top:0;">📤 PUNTOS DE TOMA</h5>
+                                    <div id="loc-list-taken" style="display: flex; flex-direction: column; gap: 10px;">
+                                    </div>
+                                    <button class="btn-save"
+                                        style="width: 100%; margin-top: 25px; background: rgba(59, 130, 246, 0.1); color: var(--accent-blue); border: 1px dashed var(--accent-blue);">➕
+                                        Agregar Punto</button>
+                                </div>
+                                <div class="card-glass-vibrant" style="padding: 24px;">
+                                    <h5 style="color: var(--accent-purple); margin-top:0;">📥 PUNTOS DE ENTREGA</h5>
+                                    <div id="loc-list-dropped"
+                                        style="display: flex; flex-direction: column; gap: 10px;"></div>
+                                    <button class="btn-save"
+                                        style="width: 100%; margin-top: 25px; background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); border: 1px dashed var(--accent-purple);">➕
+                                        Agregar Punto</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-turnos" class="settings-sub-view">
+                            <div class="sec-lbl">⏰ CONFIGURACIÓN DE ROL Y MATRIZ DE TURNOS</div>
+
+                            <!-- Interfaz de Carga Masiva (Movida aquí) -->
+                            <div
+                                style="background: rgba(15,23,42,0.4); padding: 35px; border-radius: 20px; border: 1px dashed rgba(59, 130, 246, 0.4); text-align: center; margin-bottom: 30px;">
+                                <div style="font-size: 3rem; margin-bottom: 15px;">📊</div>
+                                <h3 style="margin-bottom: 10px;">Carga Masiva de Rol Mensual (Excel)</h3>
+                                <p
+                                    style="opacity: 0.6; margin-bottom: 25px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                                    Sube el archivo Excel con el rol de turnos. El sistema detectará automáticamente
+                                    nuevos turnos y actualizará la base de datos de agentes.</p>
+
+                                <div style="display: flex; gap: 15px; justify-content: center; align-items: center;">
+                                    <input type="file" id="input-rol-excel" accept=".xlsx, .xls" style="display: none;"
+                                        onchange="handleFileSelect(event)">
+                                    <button class="btn-save"
+                                        style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px 25px; font-weight: 700;"
+                                        onclick="document.getElementById('input-rol-excel').click()">📂 1. SELECCIONAR
+                                        EXCEL</button>
+                                    <button id="btn-upload-rol" class="btn-save"
+                                        style="background: linear-gradient(135deg, #87CEEB, #3b82f6); color: #000; padding: 12px 30px; opacity: 0.5; font-weight: 900; pointer-events: none;"
+                                        onclick="handleRolUpload()">🚀 2. SUBIR A LA WEB</button>
+                                    <button class="btn-excel" onclick="downloadRolTemplate()">📈 PLANTILLA</button>
+                                </div>
+                                <div id="file-ready-msg"
+                                    style="display:none; margin-top: 15px; color: #10b981; font-weight: 800; font-size: 0.8rem;">
+                                    ✅ ARCHIVO LISTO: <span id="ready-filename">--</span>
+                                </div>
+                            </div>
+
+                            <!-- Vista Previa de Carga -->
+                            <div id="rol-upload-results"
+                                style="margin-top: 30px; display: none; margin-bottom: 40px; background: rgba(15,23,42,0.5); padding: 25px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.05);">
+                                <h4 style="margin-bottom: 15px; font-weight: 800; color: #fff;">📅 VISTA PREVIA DEL ROL
+                                    IMPORTADO</h4>
+                                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                                    <table class="ops-table">
+                                        <thead>
+                                            <tr id="rol-preview-header"></tr>
+                                        </thead>
+                                        <tbody id="rol-preview-body"></tbody>
+                                    </table>
+                                </div>
+                                <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                                    <button class="btn-save"
+                                        style="background: #10b981; padding: 12px 35px; font-weight: 900;"
+                                        onclick="confirmAgentsImport()">✅ CONFIRMAR E IMPORTAR ROL</button>
+                                </div>
+                            </div>
+
+                            <div class="sec-lbl" style="margin-top: 40px;">🎨 VISUALIZACIÓN DE TURNOS ACTIVOS EN EL
+                                SISTEMA</div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                                <div id="turns-grid-M" class="card-glass-vibrant" style="padding: 24px;">
+                                    <h5 style="color: #3b82f6; margin-top:0;">🌞 TURNOS MAÑANA (M)</h5>
+                                    <div class="turns-capsule-box" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    </div>
+                                </div>
+                                <div id="turns-grid-T" class="card-glass-vibrant" style="padding: 24px;">
+                                    <h5 style="color: #f97316; margin-top:0;">🌅 TURNOS TARDE (T)</h5>
+                                    <div class="turns-capsule-box" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    </div>
+                                </div>
+                                <div id="turns-grid-N" class="card-glass-vibrant" style="padding: 24px;">
+                                    <h5 style="color: #8b5cf6; margin-top:0;">🌛 TURNOS NOCHE (N)</h5>
+                                    <div class="turns-capsule-box" style="display: flex; flex-wrap: wrap; gap: 10px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-rpg" class="settings-sub-view">
+                            <div class="dashboard-banner"
+                                style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3);">
+                                <div class="banner-icon-box"
+                                    style="background: rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.4);">
+                                    <span style="font-size: 2rem;">⚔️</span>
+                                </div>
+                                <div class="banner-text">
+                                    <h2 style="color: #fff; text-shadow: 0 0 20px rgba(139, 92, 246, 0.4);">SISTEMA DE
+                                        PROGRESIÓN RPG</h2>
+                                    <p style="color: var(--accent-purple);">Convirtiendo la operación en una carrera de
+                                        élite · CargoMobility Rewards</p>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 30px;">
+                                <!-- NIVEL Y RANGOS -->
+                                <div class="rpg-card">
+                                    <div class="rpg-panel-title">
+                                        <span>🏆 NIVELACIÓN Y JERARQUÍA (TIERS)</span>
+                                    </div>
+                                    <div id="rpg-levels-list">
+                                        <!-- Rendered dynamically -->
+                                    </div>
+                                    <button class="btn-save"
+                                        style="width: 100%; margin-top: 20px; background: rgba(59, 130, 246, 0.1); border: 1px dashed var(--accent-blue); color: var(--accent-blue);"
+                                        onclick="addNewRank()">
+                                        ➕ Añadir Nuevo Rango
+                                    </button>
+                                </div>
+
+                                <div style="display: flex; flex-direction: column; gap: 30px;">
+                                    <!-- LOGROS Y MEDALLAS -->
+                                    <div class="rpg-card">
+                                        <div class="rpg-panel-title">
+                                            <span>🏅 LOGROS Y CONDECORACIONES</span>
+                                        </div>
+                                        <div id="rpg-achievements-list">
+                                            <!-- Rendered dynamically -->
+                                        </div>
+                                        <button class="btn-save"
+                                            style="width: 100%; margin-top: 15px; background: rgba(139, 92, 246, 0.1); border: 1px dashed var(--accent-purple); color: var(--accent-purple);">
+                                            ✨ Crear Nuevo Desafío
+                                        </button>
+                                    </div>
+
+                                    <!-- SALÓN DE LA FAMA -->
+                                    <div class="rpg-card" style="border-color: rgba(245, 158, 11, 0.3);">
+                                        <div class="rpg-panel-title" style="color: var(--accent-orange);">
+                                            <span>🌟 SALÓN DE LA FAMA (LEGENDARIOS)</span>
+                                        </div>
+                                        <div id="rpg-fame-list">
+                                            <!-- Rendered dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- REGLAS DE XP (FULL WIDTH BELOW) -->
+                            <div class="rpg-card" style="margin-top: 30px;">
+                                <div class="rpg-panel-title" style="display: flex; justify-content: space-between;">
+                                    <span>⚖️ MATRIZ DE RECOMPENSAS (XP VALUES)</span>
+                                    <button class="btn-save"
+                                        style="padding: 5px 15px; font-size: 0.7rem; background: var(--accent-green);"
+                                        onclick="saveXPRules()">💾 Guardar Reglas</button>
+                                </div>
+                                <div class="xp-multiplier-grid" id="rpg-xp-rules-grid">
+                                    <!-- Rendered dynamically -->
+                                </div>
+                                <div
+                                    style="margin-top: 25px; padding: 20px; border-radius: 15px; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2);">
+                                    <h5 style="color: var(--accent-green); margin-bottom: 8px; font-weight: 800;">💡
+                                        NOTA ESTRATÉGICA</h5>
+                                    <p style="font-size: 0.8rem; opacity: 0.7; margin: 0; line-height: 1.6;">
+                                        El XP acumulado permite a los agentes evolucionar su avatar y rango. Niveles más
+                                        altos otorgan prioridad en la asignación de tareas premium y visibilidad en el
+                                        ranking mensual, fomentando la calidad operativa sin supervisión punitiva.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="settings-view-dl" class="settings-sub-view">
+                            <div class="sec-lbl">📥 MÓDULO DE EXPORTACIÓN</div>
+                            <div class="aj-dl-grid">
+                                <div class="aj-dl-card">📊 Reporte Mensual<button class="btn-save"
+                                        style="margin-top:15px; width:100%; background: var(--accent-blue);">Descargar
+                                        PDF</button></div>
+                                <div class="aj-dl-card" onclick="exportAgentsXLS()">📋 Directorio Agentes<button
+                                        class="btn-save"
+                                        style="margin-top:15px; width:100%; background: #10b981;">Descargar CSV</button>
+                                </div>
+                                <div class="aj-dl-card">📦 Base de Tramos<button class="btn-save"
+                                        style="margin-top:15px; width:100%; background: #6366f1;">Exportar XLSX</button>
+                                </div>
+                                <div class="aj-dl-card" onclick="generateNightShiftPlanilla()">🚐 Movilización<button
+                                        class="btn-save"
+                                        style="margin-top:15px; width:100%; background: #f59e0b;">Generar XLSX</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+            </section>
+            <section id="ayuda" class="tab-content">
+                <div class="panel-header"
+                    style="background: linear-gradient(135deg, #1e40af, #1e1b4b); padding: 50px 40px; border-radius: 0 0 40px 40px; margin-bottom: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+                    <div style="display: flex; align-items: center; gap: 35px; max-width: 1200px; margin: 0 auto;">
+                        <div
+                            style="width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 24px; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px);">
+                            📖</div>
+                        <div>
+                            <h2
+                                style="font-size: 2.2rem; font-weight: 950; letter-spacing: -1.5px; margin: 0; color: #fff;">
+                                Guía Maestra WebPMR</h2>
+                            <p style="opacity: 0.8; font-size: 1.1rem; margin-top: 8px; color: #cbd5e1;">Domina el
+                                ecosistema operativo "Elite Radiant" en minutos.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="help-grid" style="padding: 0 40px; max-width: 1300px; margin: 0 auto;">
+                    <div class="help-card">
+                        <div style="font-size: 2.5rem; margin-bottom: 20px;">📊</div>
+                        <h4>Dashboard Operativo</h4>
+                        <p>Visualiza en tiempo real la carga de trabajo, distribución de agentes por terminal y el
+                            estado general de los vuelos (T1 y T2). Utiliza el Heatmap para identificar cuellos de
+                            botella.</p>
+                    </div>
+                    <div class="help-card">
+                        <div style="font-size: 2.5rem; margin-bottom: 20px;">📋</div>
+                        <h4>Gestión de Asignaciones</h4>
+                        <p>El corazón del sistema. Asigna agentes a pasajeros PMR de forma estratégica, monitorea
+                            estados en tiempo real (Contactado, Trayecto, Terminado) y gestiona tareas generales.</p>
+                    </div>
+                    <div class="help-card">
+                        <div style="font-size: 2.5rem; margin-bottom: 20px;">🧑‍✈️</div>
+                        <h4>Control de Personal</h4>
+                        <p>Administra la asistencia diaria, estados de colación y vigencia de credenciales TICA. El
+                            sistema notifica automáticamente agentes con ausentismo crítico.</p>
+                    </div>
+                </div>
+
+                <div
+                    style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(59, 130, 246, 0.03); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 24px;">
+                    <h4
+                        style="color: var(--accent-blue); margin-top: 0; margin-bottom: 30px; font-weight: 950; font-size: 1.1rem; letter-spacing: 1px; text-transform: uppercase;">
+                        ⚡ FLUJO RÁPIDO DE OPERACIÓN</h4>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 30px;">
+                        <div style="text-align: center;">
+                            <div
+                                style="font-weight: 950; font-size: 1.8rem; color: var(--accent-blue); margin-bottom: 15px;">
+                                01</div>
+                            <div style="font-weight: 900; font-size: 0.85rem; margin-bottom: 10px; color: #fff;">
+                                DETECTAR</div>
+                            <p style="font-size: 0.8rem; opacity: 0.6; line-height: 1.6;">Identifica vuelos con alta
+                                demanda en el Dashboard o Timeline de Próxima Hora.</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div
+                                style="font-weight: 950; font-size: 1.8rem; color: var(--accent-blue); margin-bottom: 15px;">
+                                02</div>
+                            <div style="font-weight: 900; font-size: 0.85rem; margin-bottom: 10px; color: #fff;">ASIGNAR
+                            </div>
+                            <p style="font-size: 0.8rem; opacity: 0.6; line-height: 1.6;">Ingresa al modal de asignación
+                                desde la vista de Vuelos o Pasajeros para desplegar personal.</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div
+                                style="font-weight: 950; font-size: 1.8rem; color: var(--accent-blue); margin-bottom: 15px;">
+                                03</div>
+                            <div style="font-weight: 900; font-size: 0.85rem; margin-bottom: 10px; color: #fff;">
+                                MONITOREAR</div>
+                            <p style="font-size: 0.8rem; opacity: 0.6; line-height: 1.6;">Sigue el estado del tramo
+                                metro a metro desde la pestaña de Tramos y el mapa de calor.</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div
+                                style="font-weight: 950; font-size: 1.8rem; color: var(--accent-blue); margin-bottom: 15px;">
+                                04</div>
+                            <div style="font-weight: 900; font-size: 0.85rem; margin-bottom: 10px; color: #fff;">AUDITAR
+                            </div>
+                            <p style="font-size: 0.8rem; opacity: 0.6; line-height: 1.6;">Exporta reportes de
+                                cumplimiento y analiza el KPI de eficiencia mensual en el Panel de Ajustes.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Script de lógica principal -->
+    <!-- Popover para PMR (Hover) -->
+    <div id="pmr-popover" class="pmr-popover"></div>
+    <div id="pax-popover" class="pax-popover"></div>
+
+    <!-- Modal de Asignación Estratégica -->
+    <div id="modal-asignar-pax" class="modal-overlay">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 id="assign-modal-title">♿ Asignación PMR - Vuelo ...</h3>
+                <button class="close-modal" onclick="closeModal('modal-asignar-pax')">&times;</button>
+            </div>
+            <div id="assign-modal-body" style="padding: 2rem; max-height: 70vh; overflow-y: auto;">
+                <!-- Dinámico -->
+            </div>
+            <div class="form-actions" style="padding: 1.5rem 2rem; background: rgba(0,0,0,0.2);">
+                <button type="button" class="btn-cancel" onclick="closeModal('modal-asignar-pax')">Cancelar</button>
+                <button type="button" class="btn-save" style="display: flex; align-items: center; gap: 8px;"
+                    onclick="confirmAssign()">
+                    ✅ Confirmar Asignación
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nueva Tarea (General) -->
+    <div id="modal-new-task" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>🎯 Nueva Tarea Operacional</h3>
+                <button class="close-modal" onclick="closeModal('modal-new-task')">&times;</button>
+            </div>
+            <form id="form-new-task" onsubmit="saveGeneralTask(event)" style="padding: 2rem;">
+                <div class="form-grid" style="grid-template-columns: 1fr;">
+                    <div class="form-group">
+                        <label>🎯 TAREA</label>
+                        <select class="search-input-fancy" id="field-task-name" required
+                            onchange="handleTaskTypeChange()">
+                            <option value="Colacion">🍔 Colación (60 min)</option>
+                            <option value="Reponer Minsal">🩹 Reponer Minsal</option>
+                            <option value="Atención counters">🎫 Atención Counters</option>
+                            <option value="Barrer espigones">🧹 Barrer Espigones</option>
+                            <option value="Recolectar sillas">♿ Recolectar Sillas</option>
+                            <option value="OTRO">✏️ OTRO (Especificar)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="group-other-task" style="display:none;">
+                        <label>ESPECIFICAR TAREA</label>
+                        <input type="text" id="field-task-other" class="search-input-fancy"
+                            placeholder="Ej. Inventario Rampa">
+                    </div>
+                    <div class="form-group">
+                        <label>🦺 AGENTE ASIGNADO</label>
+                        <select class="search-input-fancy" id="field-task-agent" required>
+                            <!-- Dinámico -->
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>🕒 HORA INICIO</label>
+                            <input type="time" id="field-task-start" class="search-input-fancy" required
+                                onchange="calculateEndTime()">
+                        </div>
+                        <div class="form-group">
+                            <label>🕒 HORA FIN</label>
+                            <input type="time" id="field-task-end" class="search-input-fancy" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>🦺 ASIGNADOR</label>
+                        <select class="search-input-fancy" id="field-task-issuer" required>
+                            <option value="JEFATURA">👑 JEFATURA</option>
+                            <option value="SPVR LATAM">SPVR LATAM</option>
+                            <option value="SPVR OLA">SPVR OLA</option>
+                            <option value="CDO LATAM">CDO LATAM</option>
+                            <option value="CDO OLA">CDO OLA</option>
+                            <option value="PT LATAM">PT LATAM</option>
+                            <option value="PT OLA">PT OLA</option>
+                            <option value="FT LATAM">FT LATAM</option>
+                            <option value="FT OLA">FT OLA</option>
+                            <option value="FT">FT (Generic)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-new-task')">Cancelar</button>
+                    <button type="submit" class="btn-save" style="background: var(--accent-blue);">🚀 Crear
+                        Tarea</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Modal de Auditoría Táctica 360° -->
+    <div id="modal-agent-analytics" class="modal-overlay">
+        <div class="modal-content"
+            style="max-width: 1100px; background: rgba(15,23,42,0.98); border: 1px solid rgba(139,92,246,0.3);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);">
+                <h3>📊 Panel de Auditoría Táctica 360°</h3>
+                <button class="close-modal" onclick="closeModal('modal-agent-analytics')">&times;</button>
+            </div>
+            <div id="analytics-modal-body" style="padding: 2.5rem; max-height: 85vh; overflow-y: auto;">
+                <div class="metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 2rem;">
+                    <div class="metric-card card-purple">
+                        <div class="metric-label">MÁS EFICIENTE (LA)</div>
+                        <div class="metric-value" style="font-size:1.2rem;" id="ana-top-la">--</div>
+                        <div class="metric-trend">Mayor aceptación LATAM</div>
+                    </div>
+                    <div class="metric-card card-blue">
+                        <div class="metric-label">MÁS EFICIENTE (OAL)</div>
+                        <div class="metric-value" style="font-size:1.2rem;" id="ana-top-oal">--</div>
+                        <div class="metric-trend">Mayor aceptación OAL</div>
+                    </div>
+                    <div class="metric-card card-orange">
+                        <div class="metric-label">AUDITOR DE TRAMOS</div>
+                        <div class="metric-value" style="font-size:1.2rem;" id="ana-top-audit">--</div>
+                        <div class="metric-trend">Más UPD en Tramos</div>
+                    </div>
+                    <div class="metric-card card-red">
+                        <div class="metric-label">ALERTA RECHAZOS</div>
+                        <div class="metric-value" style="font-size:1.2rem;" id="ana-top-reject">--</div>
+                        <div class="metric-trend">Mayor índice fallidos</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <div class="panel-section"
+                        style="background: rgba(255,255,255,0.03); border-radius: 15px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
+                        <h4 style="color:var(--accent-blue); margin-bottom:15px; font-weight:800;">📍 PRODUCTIVIDAD POR
+                            TERMINAL</h4>
+                        <div id="ana-terminal-stats"></div>
+                    </div>
+                    <div class="panel-section"
+                        style="background: rgba(255,255,255,0.03); border-radius: 15px; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.05);">
+                        <h4 style="color:var(--accent-purple); margin-bottom:15px; font-weight:800;">✈️ TAREAS POR
+                            AEROLÍNEA</h4>
+                        <div id="ana-airline-stats"></div>
+                    </div>
+                </div>
+
+                <div class="panel-section" style="margin-top:2rem;">
+                    <h4 style="margin-bottom:15px; font-weight:800;">📋 RANKING DETALLADO DE PRODUCTIVIDAD</h4>
+                    <div class="table-container" style="max-height: 400px; border: 1px solid rgba(255,255,255,0.05);">
+                        <table class="ops-table">
+                            <thead>
+                                <tr>
+                                    <th>🦺 AGENTE</th>
+                                    <th>✅ ACEP.</th>
+                                    <th>❌ RECH.</th>
+                                    <th>🕒 CONECTADO</th>
+                                    <th>📝 UPD TRAMOS</th>
+                                    <th>🏆 SCORES</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ana-ranking-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions"
+                style="padding: 1.5rem 2.5rem; background: rgba(0,0,0,0.3); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn-cancel" onclick="closeModal('modal-agent-analytics')">Cerrar</button>
+                <button class="btn-excel" onclick="exportAnalyticsExcel()" style="background: #10b981; color: white;">📥
+                    Descargar Informe Visual (XLS)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Agente -->
+    <div id="modal-edit-agent" class="modal-overlay">
+        <div class="modal-content" style="max-width: 820px; border-radius: 20px;">
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <h3 id="edit-agent-title" style="font-size: 1.1rem; margin: 0;">✏️ Editar Agente: --</h3>
+                <button class="close-modal" onclick="closeModal('modal-edit-agent')"
+                    style="width:30px; height:30px; font-size:1.2rem;">&times;</button>
+            </div>
+            <form id="form-edit-agent" onsubmit="confirmSaveAgent(event)" style="padding: 1.5rem;">
+                <h4
+                    style="color: var(--accent-blue); margin-top: 0; margin-bottom: 15px; font-size: 0.7rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; letter-spacing: 1px;">
+                    INFORMACIÓN PERSONAL</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">ID AGENTE</label>
+                        <input type="text" id="edit-agent-id" class="search-input-fancy" readonly
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">NOMBRE COMPLETO</label>
+                        <input type="text" id="edit-agent-name" class="search-input-fancy" required
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">RUT [XX.XXX.XXX-X]</label>
+                        <input type="text" id="edit-agent-rut" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">TELÉFONO [+569...]</label>
+                        <input type="text" id="edit-agent-phone" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">DIRECCIÓN</label>
+                        <input type="text" id="edit-agent-address" class="search-input-fancy" placeholder="Avenida..."
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">NUMERACIÓN</label>
+                        <input type="text" id="edit-agent-number" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group full" style="grid-column: span 3;">
+                        <label style="font-size: 0.65rem;">COMUNA</label>
+                        <input type="text" id="edit-agent-commune" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                </div>
+
+                <h4
+                    style="color: var(--accent-blue); margin-top: 20px; margin-bottom: 15px; font-size: 0.7rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; letter-spacing: 1px;">
+                    INFORMACIÓN OPERATIVA</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">EQUIPO</label>
+                        <select id="edit-agent-team" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                            <option value="JEFATURA">JEFATURA</option>
+                            <option value="SPVR LATAM">SPVR LATAM</option>
+                            <option value="SPVR OLA">SPVR OLA</option>
+                            <option value="CDO LATAM">CDO LATAM</option>
+                            <option value="CDO OLA">CDO OLA</option>
+                            <option value="PT LATAM">PT LATAM</option>
+                            <option value="PT OLA">PT OLA</option>
+                            <option value="FT LATAM">FT LATAM</option>
+                            <option value="FT OLA">FT OLA</option>
+                            <option value="FT">FT</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">TALLA POLERA</label>
+                        <select id="edit-agent-talla" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">XXL</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">GÉNERO</label>
+                        <select id="edit-agent-gender" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                            <option value="MASCULINO">MASCULINO</option>
+                            <option value="FEMENINO">FEMENINO</option>
+                            <option value="OTRO">OTRO</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">TICA</label>
+                        <select id="edit-agent-tica" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                            <option>⛔Pendiente</option>
+                            <option>🪪Tica Vigente</option>
+                            <option>🎟️Tica Vencida</option>
+                            <option>🎫Renovando Tica</option>
+                        </select>
+                    </div>
+                    <div class="form-group full" style="grid-column: span 3;">
+                        <label style="font-size: 0.65rem;">CALENDARIO DE TURNOS (VISTA MENSUAL)</label>
+                        <input type="text" id="edit-agent-next-shifts" class="search-input-fancy"
+                            placeholder="M0513 T1321 L L N2008..." style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                        <div id="edit-agent-shifts-preview"
+                            style="font-size: 0.7rem; color: var(--accent-blue); margin-top: 5px; font-weight: 700;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions"
+                    style="border-top: 0; padding-top: 15px; margin-top: 10px; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn-cancel" onclick="confirmDeleteAgent()"
+                        style="border-color: #ef4444; color: #ef4444; margin-right: auto; padding: 0.6rem 1.2rem; font-size: 0.8rem; border-radius: 8px;">🗑️
+                        Eliminar</button>
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-edit-agent')"
+                        style="padding: 0.6rem 1.2rem; font-size: 0.8rem; border-radius: 8px;">Cancelar</button>
+                    <button type="submit" class="btn-save"
+                        style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 0.6rem 1.5rem; font-size: 0.8rem; border-radius: 8px;">💾
+                        Guardar Agente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Agregar Agente -->
+    <div id="modal-add-agent" class="modal-overlay">
+        <div class="modal-content" style="max-width: 820px; border-radius: 20px;">
+            <div class="modal-header"
+                style="background: linear-gradient(135deg, #10b981, #059669); padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <h3 style="font-size: 1.1rem; margin: 0; color: white;">➕ Agregar Nuevo Agente</h3>
+                <button class="close-modal" onclick="closeModal('modal-add-agent')"
+                    style="width:30px; height:30px; font-size:1.2rem;">&times;</button>
+            </div>
+            <form id="form-add-agent" onsubmit="saveNewAgent(event)" style="padding: 1.5rem;">
+                <h4
+                    style="color: var(--accent-blue); margin-top: 0; margin-bottom: 15px; font-size: 0.7rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; letter-spacing: 1px;">
+                    INFORMACIÓN PERSONAL</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">ID AGENTE (AUTO)</label>
+                        <input type="text" id="new-agent-id" class="search-input-fancy" readonly
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem; opacity: 0.7;">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size: 0.65rem;">NOMBRE COMPLETO</label>
+                        <input type="text" id="new-agent-name" class="search-input-fancy" required
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">RUT [XX.XXX.XXX-X]</label>
+                        <input type="text" id="new-agent-rut" class="search-input-fancy" placeholder="17.123.456-K"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">TELÉFONO [+569...]</label>
+                        <input type="text" id="new-agent-phone" class="search-input-fancy" placeholder="+56912345678"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">DIRECCIÓN</label>
+                        <input type="text" id="new-agent-address" class="search-input-fancy"
+                            placeholder="Ej. Av. Libertador" style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">NUMERACIÓN</label>
+                        <input type="text" id="new-agent-number" class="search-input-fancy" placeholder="1234"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label style="font-size: 0.65rem;">COMUNA</label>
+                        <input type="text" id="new-agent-commune" class="search-input-fancy" placeholder="Pudahuel"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                    </div>
+                </div>
+
+                <h4
+                    style="color: var(--accent-blue); margin-top: 20px; margin-bottom: 15px; font-size: 0.7rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; letter-spacing: 1px;">
+                    INFORMACIÓN OPERATIVA</h4>
+                <div class="form-grid" style="grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">EQUIPO</label>
+                        <select id="new-agent-team" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                            <option value="JEFATURA">JEFATURA</option>
+                            <option value="SPVR LATAM">SPVR LATAM</option>
+                            <option value="SPVR OLA">SPVR OLA</option>
+                            <option value="CDO LATAM">CDO LATAM</option>
+                            <option value="CDO OLA">CDO OLA</option>
+                            <option value="PT LATAM">PT LATAM</option>
+                            <option value="PT OLA">PT OLA</option>
+                            <option value="FT LATAM">FT LATAM</option>
+                            <option value="FT OLA">FT OLA</option>
+                            <option value="FT">FT</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 0.65rem;">TICA</label>
+                        <select id="new-agent-tica-status" class="search-input-fancy"
+                            style="padding: 0.6rem 0.8rem; font-size: 0.85rem;">
+                            <option>🪪Tica Vigente</option>
+                            <option>⛔Pendiente</option>
+                            <option>🎟️Tica Vencida</option>
+                            <option>🎫Renovando Tica</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions"
+                    style="border-top: 0; padding-top: 15px; margin-top: 10px; display: flex; align-items: center; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-add-agent')"
+                        style="padding: 0.6rem 1.2rem; font-size: 0.8rem; border-radius: 8px;">Cancelar</button>
+                    <button type="submit" class="btn-save"
+                        style="background: linear-gradient(135deg, #10b981, #059669); padding: 0.6rem 1.5rem; font-size: 0.8rem; border-radius: 8px;">💾
+                        Agregar Agente</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Modal Editar/Agregar Aerolínea -->
+    <div id="modal-aero-edit" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="aero-modal-title">🏢 Aerolínea</h3>
+                <button class="close-modal" onclick="closeModal('modal-aero-edit')">&times;</button>
+            </div>
+            <form onsubmit="saveAero(event)" style="padding: 2rem;">
+                <input type="hidden" id="field-aero-old-name">
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>NOMBRE AEROLÍNEA (Ej: SKY AIRLINES)</label>
+                    <input type="text" id="field-aero-name" class="search-input-fancy" required placeholder="LATAM">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>LOGO (UPLOAD / JPG)</label>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <div id="aero-logo-preview" style="width: 130px; height: 50px; background: #fff; border-radius: 8px; border: 1px solid #ddd; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 0.6rem; color: #999;">SIN LOGO</span>
+                        </div>
+                        <input type="file" id="field-aero-file" accept="image/*" style="display: none;" onchange="previewAeroLogo(event)">
+                        <button type="button" class="btn-save" style="background: rgba(255,255,255,0.05); border: 1px solid #444;" onclick="document.getElementById('field-aero-file').click()">📂 Subir</button>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-aero-edit')">Cancelar</button>
+                    <button type="submit" class="btn-save">💾 Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar/Agregar SSR -->
+    <div id="modal-ssr-edit" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="ssr-modal-title">♿ Código SSR</h3>
+                <button class="close-modal" onclick="closeModal('modal-ssr-edit')">&times;</button>
+            </div>
+            <form onsubmit="saveSSR(event)" style="padding: 2rem;">
+                <input type="hidden" id="field-ssr-old-code">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div class="form-group">
+                        <label>CÓDIGO (Ej: WCHR)</label>
+                        <input type="text" id="field-ssr-code" class="search-input-fancy" maxlength="4" required placeholder="WCHR">
+                    </div>
+                    <div class="form-group">
+                        <label>COLOR INDICADOR</label>
+                        <input type="color" id="field-ssr-color" class="search-input-fancy" style="height: 45px; padding: 5px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>DESCRIPCIÓN OPERATIVA</label>
+                    <textarea id="field-ssr-desc" class="search-input-fancy" style="height: 100px; resize: none;" required placeholder="Silla de ruedas para distancias largas..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('modal-ssr-edit')">Cancelar</button>
+                    <button type="submit" class="btn-save">💾 Guardar SSR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

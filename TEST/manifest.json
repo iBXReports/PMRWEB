@@ -1,0 +1,21 @@
+{
+  "name": "WebPMR - Agente",
+  "short_name": "AgentePMR",
+  "start_url": "AgentePMR.html",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "img/icon_pmr.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "img/icon_pmr.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis Técnico: CODIGOAGENTE.html</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #1e293b;
+            --accent: #10b981;
+            --bg: #0f172a;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --glass: rgba(30, 41, 59, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 0;
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-top: 0;
+        }
+
+        .icon {
+            font-size: 1.8rem;
+        }
+
+        ul {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        b {
+            color: var(--accent);
+        }
+
+        .tech-pill {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            margin: 5px;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #f472b6;
+        }
+
+        .highlight-box {
+            background: rgba(16, 185, 129, 0.05);
+            border-left: 4px solid var(--accent);
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 12px 12px 0;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Análisis Maestro</h1>
+            <p class="subtitle">Desglose Técnico y Funcional de <b>CODIGOAGENTE.html</b></p>
+        </header>
+
+        <div class="section">
+            <h2><span class="icon">🚀</span> Propósito General</h2>
+            <p>
+                <code>CODIGOAGENTE.html</code> es una aplicación web de una sola página (SPA) diseñada como un
+                <b>Dashboard Táctico Móvil</b> para los agentes de PMR (Personas con Movilidad Reducida) en entornos
+                aeroportuarios. Su objetivo es centralizar la recepción de tareas, el seguimiento de pasajeros en tiempo
+                real y la gestión administrativa del personal en una interfaz optimizada para teléfonos y tablets.
+            </p>
+            <div class="tech-stack">
+                <span class="tech-pill">HTML5</span>
+                <span class="tech-pill">CSS3 (Variables & Glassmorphism)</span>
+                <span class="tech-pill">JavaScript (Vanilla)</span>
+                <span class="tech-pill">Supabase JS SDK</span>
+                <span class="tech-pill">Firebase SDK</span>
+                <span class="tech-pill">OpenWeather API</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🛠️</span> Arquitectura de Datos</h2>
+            <p>El sistema utiliza un enfoque híbrido de base de datos para garantizar resiliencia y velocidad:</p>
+            <ul>
+                <li><b>Supabase (Primaria):</b> Se encarga de la gestión de la tabla <code>pasajeros_pmr</code>. Utiliza
+                    Canales (Channels) para actualizaciones en tiempo real via WebSockets.</li>
+                <li><b>Firebase (Sincronización):</b> Funciona como un nodo de respaldo y motor de notificaciones
+                    rápidas a través de Firestore, escuchando cambios mediante <code>onSnapshot</code>.</li>
+                <li><b>API Backend:</b> Se comunica con un servidor central mediante la función <code>fetchJson</code>
+                    para operaciones que requieren lógica de servidor (como el logueo masivo o auditorías).</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">📱</span> Módulos Funcionales</h2>
+
+            <div class="module">
+                <h3>1. Sistema de Autenticación</h3>
+                <p>Permite el acceso mediante el <b>RUT</b> del agente. El sistema normaliza el RUT automáticamente y
+                    persiste la sesión localmente (<code>localStorage</code>) para permitir el autologin rápido.</p>
+            </div>
+
+            <div class="module">
+                <h3>2. Gestión de Tareas (Dashboard)</h3>
+                <p>Presenta las asignaciones enviadas por el supervisor. Los agentes pueden:</p>
+                <ul>
+                    <li>Ver detalles del vuelo, pasajero y tipo de asistencia (SSR).</li>
+                    <li><b>Aceptar / Iniciar / Finalizar</b> tramos con un solo toque.</li>
+                    <li>Recibir alertas sonoras (<code>noti1.mp3</code>) y visuales ante nuevas tareas.</li>
+                </ul>
+            </div>
+
+            <div class="module">
+                <h3>3. Seguimiento de Tramos (Pestaña Tramos)</h3>
+                <p>Es el corazón operativo. Muestra una tabla detallada de <b>todos los movimientos en el
+                        aeropuerto</b>. Incluye selectores rápidos para:</p>
+                <ul>
+                    <li><b>Tomado En / Dejado En:</b> Ubicaciones predefinidas (Puente, Plaza, Counters, etc.).</li>
+                    <li><b>Status Pax:</b> Estado actual del pasajero (Contactado, Embarcado, etc.).</li>
+                    <li><b>Filtros Avanzados:</b> Por aerolínea (logos interactivos), número de vuelo o nombre del
+                        pasajero.</li>
+                </ul>
+            </div>
+
+            <div class="module">
+                <h3>4. Calendario y Turnos</h3>
+                <p>Un potente módulo de <b>Gestión de Roles Mensuales</b>. Permite visualizar el calendario del mes con
+                    colores distintivos por turno (M, T, N, Libre, Vacaciones, etc.). Incluye una "paleta de pintura"
+                    para que el supervisor o el sistema asignen turnos de forma visual.</p>
+            </div>
+
+            <div class="module">
+                <h3>5. Gamificación (RPG System)</h3>
+                <p>Convierte la operación técnica en una experiencia de progresión:</p>
+                <ul>
+                    <li><b>Niveles y XP:</b> Basado en tareas completadas con éxito.</li>
+                    <li><b>Rango:</b> Estados como "Especialista T1" para incentivar la calidad.</li>
+                    <li><b>Medallas:</b> Logros visuales por desempeño.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🎨</span> Diseño y UX</h2>
+            <ul>
+                <li><b>Temas Dinámicos:</b> Soporte total para <b>Modo Oscuro</b> (oscuro profundo para la losa del
+                    aeropuerto de noche) y <b>Modo Claro</b>.</li>
+                <li><b>Touch-First:</b> Todos los botones y selectores tienen un área de contacto mínima de 40px para
+                    evitar errores táctiles.</li>
+                <li><b>Widgets en Vivo:</b> Incluye un reloj digital de alta precisión, estado de la base de datos (DB
+                    Online/Offline) y un widget de clima real para SCL/Pudahuel.</li>
+                <li><b>Micro-animaciones:</b> Uso de <code>cubic-bezier</code> para transiciones suaves y barras de
+                    carga animadas.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🔍</span> Lógica de Programación Clave</h2>
+            <div class="highlight-box">
+                <p><b>Optimismo en la UI:</b> El script aplica "Actualización Optimista". Cuando un agente cambia un
+                    estado, la interfaz se actualiza inmediatamente en el <code>cacheTramosAgente</code> local antes de
+                    esperar la respuesta del servidor, haciendo que la App se sienta instantánea.</p>
+            </div>
+            <p>Funciones críticas documentadas en el código:</p>
+            <ul>
+                <li><code>actualizarDatoTramoAgente()</code>: Orquestador que guarda en Supabase, Firebase y notifica al
+                    resto de la red simultáneamente.</li>
+                <li><code>renderTramosAgente()</code>: Motor de búsqueda y paginación que filtra miles de registros en
+                    pocos milisegundos.</li>
+                <li><code>initShiftLogic()</code>: Maneja la matriz de turnos mensuales y la persistencia de colores.
+                </li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2><span class="icon">🪄</span> Guía de Replicación: Pestaña Config</h2>
+            <p>Si deseas llevarte el 100% de la funcionalidad de "Configuración" a una nueva página, aquí tienes el
+                <b>Master Prompt</b> diseñado para que una IA lo replique sin errores:</p>
+
+            <div class="highlight-box"
+                style="background: rgba(59, 130, 246, 0.05); border-left: 4px solid var(--primary); font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #60a5fa;">
+                "Deseo replicar la pestaña 'Config' de AgentePMR.html en una nueva página. Necesito el 100% de las
+                funcionalidades:<br><br>
+                1. <b>Estructura HTML:</b> Un formulario con campos para Domicilio, Comuna, Teléfono, Credencial TICA
+                (select), Talla de Polera (select) y Género (select). Usar el estilo Glassmorphism de la App
+                original.<br><br>
+                2. <b>Lógica de Carga:</b> Al iniciar la página, debe leer el objeto 'webPmr_user' de localStorage para
+                identificar al agente y, si es posible, pre-poblar los campos con los valores actuales.<br><br>
+                3. <b>Lógica de Envío (JS):</b> Un event listener 'submit' que capture los datos, cree un objeto JSON y
+                lo envíe mediante FETCH POST al endpoint 'api.php?action=update_profile'. Debe incluir el ID del agente
+                logueado.<br><br>
+                4. <b>Feedback UI:</b> Incluir validación de campos obligatorios, una alerta de 'Guardando...' y
+                confirmación de éxito o error. Asegurar que respete el Modo Oscuro/Claro del sistema.<br><br>
+                5. <b>Persistencia en DB:</b> Garantizar que los campos coincidan con las columnas 'direccion',
+                'comuna', 'telefono', 'tica', 'talla_polera' y 'genero' de la tabla 'agentes' en MySQL."
+            </div>
+
+            <p style="font-size: 0.8rem; color: var(--muted); margin-top: 15px;">
+                <b>Tip de Experto:</b> No olvides copiar también la función <code>initTheme()</code> para que los nuevos
+                formularios no se vean blancos en modo oscuro durante la carga inicial.
+            </p>
+        </div>
+
+        <footer>
+            Análisis generado por Antigravity AI Engine &copy; 2026 - Proyecto AgentePMR
+        </footer>
+    </div>
+
+</body>
+
+</html>
